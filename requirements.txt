@@ -1,0 +1,6 @@
+# StegX Project Dependencies
+
+Pillow>=9.0.0 # For image processing (reading, writing, pixel manipulation)
+cryptography>=36.0.0 # For AES-GCM encryption/decryption and PBKDF2 key derivation
+tqdm>=4.60.0 # For displaying progress bars during long operations
+
