@@ -1,0 +1,7 @@
+pytest>=7.0.0
+pytest-cov>=4.0.0
+pillow>=9.0.0
+numpy>=1.22.0
+matplotlib>=3.5.0
+memory_profiler>=0.61.0
+hypothesis>=6.0.0            
