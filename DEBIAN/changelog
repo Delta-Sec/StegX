@@ -1,0 +1,16 @@
+stegx (1.1.0-1) kali; urgency=medium
+
+  * Added secure LSB steganography with AES-256-GCM.
+  * Enhanced encryption and data integrity.
+  * Supports PNG, BMP, and other image formats.
+  * Added data compression to maximize storage capacity.
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>  Wed, 11 Jun 2025 19:00:00 +0300
+
+stegx (1.0.0-1) unstable; urgency=high
+
+  * Initial release of StegX.
+  * Basic LSB steganography support.
+  * Command-line interface for embedding and extracting data.
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>  Mon, 15 May 2025 12:00:00 +0300

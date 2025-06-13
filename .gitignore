@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.deb
+*.log
+*.bak
+*.DS_Store
+*.swp
+*.zip
+venv/
+output.txt
+output_directory/

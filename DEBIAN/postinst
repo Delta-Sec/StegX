@@ -1,0 +1,13 @@
+#!/bin/bash
+set -e
+
+# Create symlink to main script
+ln -sf /usr/lib/stegx/stegx.py /usr/bin/stegx
+chmod +x /usr/bin/stegx
+
+echo "StegX has been successfully installed."
+echo "You can run it using the 'stegx' command."
+echo "For help, run: stegx --help"
+
+exit 0
+

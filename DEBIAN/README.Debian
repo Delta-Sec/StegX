@@ -1,0 +1,14 @@
+StegX for Debian/Kali Linux
+----------------------------
+
+This is the Debian package for StegX — a Python-based LSB steganography tool
+that uses AES-256-GCM encryption for secure data hiding in PNG images.
+
+Usage examples:
+
+  stegx embed -i input.png -f secret.txt -p password -o output.png
+  stegx extract -i output.png -p password -o recovered.txt
+
+This package installs the CLI script in /usr/bin/stegx and supporting modules in /usr/lib/stegx.
+
+Author: Delta-Sec <ayhamasfoor1@gmail.com>

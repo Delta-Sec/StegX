@@ -1,0 +1,15 @@
+.TH STEGX 1 "June 2025" "1.1.0" "StegX Manual"
+.SH NAME
+stegx \- Hide and extract encrypted files from PNG images.
+.SH SYNOPSIS
+.B stegx embed
+\-i image.png \-f secret.txt \-p password \-o output.png
+
+.B stegx extract
+\-i output.png \-p password \-o result.txt
+.SH DESCRIPTION
+StegX is a command-line tool that uses LSB steganography and AES-256-GCM to hide files inside PNG images securely.
+.SH AUTHOR
+Delta-Sec <ayhamasfoor1@gmail.com>
+.SH LICENSE
+MIT
