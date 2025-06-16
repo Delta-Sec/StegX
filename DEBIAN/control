@@ -3,7 +3,7 @@ Version: 1.1.0
 Section: utils
 Priority: optional
 Architecture: all
-Depends: python3 (>= 3.8), python3-pip, python3-pil (>= 9.0.0), python3-cryptography (>= 36.0.0), python3-tqdm (>= 4.60.0)
+Depends: python3
 Maintainer: Delta-Sec <ayhamasfoor1@gmail.com>
 Description: LSB Steganography Tool with AES Encryption
  StegX is a command-line tool for hiding files within images using
