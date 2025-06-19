@@ -1,4 +1,4 @@
-stegx (1.1.0-1) kali; urgency=medium
+stegx (1.1.0-1) Debian; urgency=medium
 
   * Added secure LSB steganography with AES-256-GCM.
   * Enhanced encryption and data integrity.
