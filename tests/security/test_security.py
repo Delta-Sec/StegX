@@ -85,11 +85,11 @@ def test_password_strength():
     print("\nPassword Strength Analysis:")
     print("--------------------------")
     for result in results:
-        print(f"Password: {'*' * min(len(result['password']), 10)}")
+        print("Password: [REDACTED]")
         print(f"  Length: {result['length']}")
         print(f"  Key Entropy: {result['entropy']:.2f} bits/byte")
         print(f"  Uniqueness: {result['uniqueness']:.2f}%")
-        print(f"  Key (partial): {result['key_hex']}")
+        print("  Key (partial): [REDACTED]")
 
     keys = [result["key_hex"] for result in results]
     assert len(keys) == len(set(keys)), "Some keys are identical despite different passwords"
