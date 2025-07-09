@@ -36,6 +36,8 @@ StegX is a command-line tool written in Python for hiding files within images us
 - 🧪 Manually tested by ParrotSec core developer
 - 📜 Fully open-source, MIT licensed
 
+![Alt](https://repobeats.axiom.co/api/embed/f049be619581f2d339bb4a9f0ece66a41408f77c.svg "Repobeats analytics image")
+
 ## Installation
 
 1.  **Prerequisites:**
