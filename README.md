@@ -7,7 +7,7 @@
 [![Security: AES-GCM](https://img.shields.io/badge/Security-AES--256--GCM-critical)]()
 [![Tests: 51 Passed](https://img.shields.io/badge/Tests-51%20passed-brightgreen)]()
 
-StegX is a command-line tool written in Python for hiding files within images using the Least Significant Bit (LSB) steganography technique. It enhances security by encrypting the hidden data using AES-256-GCM and ensures data integrity.
+StegX is a command-line tool written in Python for hiding files within images using non-linear Least Significant Bit (LSB) steganography technique. It enhances security by encrypting the hidden data using AES-256-GCM and ensures data integrity.
 
 ## Features
 
