@@ -36,25 +36,6 @@ StegX is a command-line tool written in Python for hiding files within images us
 - 🧪 Manually tested by ParrotSec core developer
 - 📜 Fully open-source, MIT licensed
 
-<p align="center">
-<a href="https://github.com/Delta-Sec/StegX/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=Delta-Sec/StegX&max=50" />
-</a>
-</p>
-
-![Alt](https://repobeats.axiom.co/api/embed/your_repo_hash.svg "Repobeats analytics image")
-
-
-## 🚀 Projects Using StegX
-
-- 🔐 [CyberSecurity Graduation Project — Delta-Sec](https://github.com/Delta-Sec/)
-- 🐦 Used in internal tools for FalconDefender
-- 🎓 Used in academic research on modern steganography
-
-Want to showcase your use? Open a [discussion](https://github.com/Delta-Sec/StegX/discussions)!
-
-
-
 ## Installation
 
 1.  **Prerequisites:**
