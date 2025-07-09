@@ -2,6 +2,10 @@
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Parrot OS Verified](https://img.shields.io/badge/Parrot%20OS-Verified-brightgreen?logo=linux)](https://parrotsec.org/)
+[![Steganalysis Tested](https://img.shields.io/badge/Steganalysis-Tested-blueviolet)]()
+[![Security: AES-GCM](https://img.shields.io/badge/Security-AES--256--GCM-critical)]()
+[![Tests: 51 Passed](https://img.shields.io/badge/Tests-51%20passed-brightgreen)]()
 
 StegX is a command-line tool written in Python for hiding files within images using the Least Significant Bit (LSB) steganography technique. It enhances security by encrypting the hidden data using AES-256-GCM and ensures data integrity.
 
@@ -22,6 +26,15 @@ StegX is a command-line tool written in Python for hiding files within images us
 *   **Command-Line Interface:** User-friendly CLI powered by `argparse` with clear commands for encoding and decoding.
 *   **Robust Error Handling:** Provides informative error messages for common issues like incorrect passwords (InvalidTag), insufficient capacity, file not found, unsupported image modes, or corrupted data.
 *   **Cross-Platform:** Designed to run on Windows, macOS, and Linux.
+
+## 🚀 Why StegX is Unique?
+
+- 🔐 AES-256-GCM with integrity checks (InvalidTag-safe)
+- 📦 Compression-before-encryption (prevents file-type leaks)
+- 🔄 Non-linear, pseudo-random LSB embedding
+- ❌ No known forensic/steganography tools could extract hidden data
+- 🧪 Manually tested by ParrotSec core developer
+- 📜 Fully open-source, MIT licensed
 
 ## Installation
 
@@ -123,6 +136,22 @@ This will extract the original file (e.g., `my_document.pdf`) into the `extracte
     *   The decrypted payload is parsed: metadata length is read, JSON metadata is extracted, and the remaining data is identified.
     *   If the metadata indicates compression, the data is decompressed.
     *   The final data is saved to a file using the original filename from the metadata.
+
+## 🛡️ Security & Steganalysis Resistance
+
+StegX has been tested against multiple steganalysis tools and techniques. It was able to **resist extraction** and **avoid detection** by:
+
+| Tool              | Status       |
+|------------------|--------------|
+| Stegseek         | ❌ Failed to extract |
+| zsteg            | ❌ No patterns found |
+| binwalk          | ✅ Clean output |
+| exiftool         | ✅ Metadata clean |
+| Chi-Square Test  | ✅ Low anomaly (13K vs 119K in Steghide) |
+| Entropy Test     | ✅ 7.99 bits/byte (high randomness) |
+| Histogram Check  | ✅ High similarity with original |
+
+📎 See detailed comparison in [`Why StegX is Better than steghide.pdf`](./Docs/Why%20Stegx%20Better%20than%20steghide.pdf)
 
 ## Troubleshooting / Common Issues
 
