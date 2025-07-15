@@ -1,4 +1,4 @@
-# StegX: Non-LSB Steganography Tool with AES Encryption
+# StegX: Non-linear LSB Steganography Tool with AES Encryption
 
 [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
