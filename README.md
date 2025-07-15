@@ -160,7 +160,7 @@ StegX has been tested against multiple steganalysis tools and techniques. It was
 
 Thanks to these amazing people:
 
-[<img src="https://github.com/AyhamAsfour.png" width="70px;"/><br /><sub><b>Ayham Asfour</b></sub>](https://github.com/AyhamAsfour)  
+[<img src="https://github.com/AyhamAsfoor.png" width="70px;"/><br /><sub><b>AyhamAsfoor</b></sub>](https://github.com/AyhamAsfour)  
 Lead Developer
 
 ## Troubleshooting / Common Issues
