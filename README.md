@@ -1,5 +1,4 @@
-![WhatsApp Image 2025-07-20 at 13 47 19_ecfaf3f7](https://github.com/user-attachments/assets/249dfec0-1a65-4b87-b9b6-9891cdf8eb60)
-
+![Stegx_Github](https://github.com/user-attachments/assets/f569fc67-7c0a-47ca-833e-d088ab1cb243)
 
 # StegX: Non-linear LSB Steganography Tool with AES Encryption
 
