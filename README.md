@@ -13,10 +13,10 @@ StegX is a command-line tool written in Python for hiding files within images us
 
 ## Features
 
-*   **Hide Files:** Embed any type of file (documents, executables, archives, etc.) within a cover image.
+*   **Hide Files:** Embed any type of file (documents, executables, archives, etc.) within a cover image using Non-linear LSB.
 *   **Extract Files:** Retrieve the original hidden file from a stego-image.
 *   **Supported Image Formats:** 
-    *   **Input (Cover/Stego):** PNG, BMP, and other formats supported by Pillow (e.g., TIFF, WebP). Palette-based images (Mode 'P') are automatically converted to RGBA.
+    *   **Input (Cover/Stego):** PNG format supported by Pillow. Palette-based images (Mode 'P') are automatically converted to RGBA.
     *   **Output (Stego):** PNG is strongly recommended and used by default for lossless saving, preserving the LSB data.
 *   **AES-256-GCM Encryption:** Encrypts the data payload (including metadata) using AES in GCM mode, providing confidentiality and authenticity. Requires a password for both hiding and extraction.
 *   **Secure Key Derivation:** Uses PBKDF2HMAC with SHA256 and a unique salt (stored with data) to derive the encryption key from the password, protecting against precomputation attacks.
