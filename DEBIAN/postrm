@@ -1,0 +1,44 @@
+#!/bin/sh
+# postrm script for stegx
+#
+# Arguments:
+#   remove
+#   purge
+#   upgrade <new-version>
+#   failed-upgrade <old-version>
+#   abort-install [<old-version>]
+#   abort-upgrade <old-version>
+#   disappear <overwriter-package> <version>
+
+set -e
+
+STEGX_WRAPPER="/usr/bin/stegx"
+
+case "$1" in
+    remove)
+        # Remove the wrapper script we created in postinst. No harm if
+        # dpkg has already cleared it.
+        if [ -f "$STEGX_WRAPPER" ]; then
+            rm -f "$STEGX_WRAPPER"
+        fi
+        ;;
+
+    purge)
+        # Nothing user-configurable to scrub -- no config files, no state.
+        if [ -f "$STEGX_WRAPPER" ]; then
+            rm -f "$STEGX_WRAPPER"
+        fi
+        ;;
+
+    upgrade|failed-upgrade|abort-install|abort-upgrade|disappear)
+        ;;
+
+    *)
+        echo "postrm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

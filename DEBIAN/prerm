@@ -1,0 +1,31 @@
+#!/bin/sh
+# prerm script for stegx
+#
+# Arguments:
+#   remove
+#   upgrade <new-version>
+#   failed-upgrade <old-version>
+#   deconfigure in-favour <package> <version> [removing <package> <version>]
+
+set -e
+
+case "$1" in
+    remove|upgrade|deconfigure)
+        # Drop any byte-compiled artefacts we produced in postinst.
+        if [ -d /usr/lib/stegx/stegx_core ]; then
+            py3clean -p stegx /usr/lib/stegx/stegx_core 2>/dev/null || true
+        fi
+        ;;
+
+    failed-upgrade)
+        ;;
+
+    *)
+        echo "prerm called with unknown argument \`$1'" >&2
+        exit 1
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0
