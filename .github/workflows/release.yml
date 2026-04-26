@@ -59,7 +59,7 @@ jobs:
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
           if [ "${GITHUB_REF_TYPE}" != "tag" ]; then
-            VERSION=$(python -c "from importlib.metadata import version; print(version('stegx'))" 2>/dev/null || echo "dev")
+            VERSION=$(python -c "from importlib.metadata import version; print(version('stegx-cli'))" 2>/dev/null || echo "dev")
           fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           echo "Releasing version: ${VERSION}"
@@ -81,7 +81,7 @@ jobs:
     if: ${{ github.event_name == 'push' || !inputs.dry_run }}
     environment:
       name: pypi
-      url: https://pypi.org/p/stegx
+      url: https://pypi.org/p/stegx-cli
     permissions:
       id-token: write
     steps:
@@ -140,6 +140,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    env:
+      DOCKERHUB_USERNAME: ${{ vars.DOCKERHUB_USERNAME }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -158,19 +160,31 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to Docker Hub
-        if: ${{ vars.DOCKERHUB_USERNAME != '' || secrets.DOCKERHUB_USERNAME != '' }}
+        if: env.DOCKERHUB_USERNAME != ''
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          username: ${{ vars.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Compose image targets
+        id: targets
+        run: |
+          set -e
+          IMAGES="ghcr.io/${{ github.repository_owner }}/stegx"
+          if [ -n "${DOCKERHUB_USERNAME}" ]; then
+              IMAGES="${IMAGES}"$'\n'"docker.io/${DOCKERHUB_USERNAME}/stegx"
+          fi
+          {
+            echo 'images<<EOF'
+            echo "${IMAGES}"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
 
       - name: Extract image metadata
         id: meta
         uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051
         with:
-          images: |
-            ghcr.io/${{ github.repository_owner }}/stegx
-            ${{ secrets.DOCKERHUB_USERNAME != '' && format('docker.io/{0}/stegx', secrets.DOCKERHUB_USERNAME) || '' }}
+          images: ${{ steps.targets.outputs.images }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

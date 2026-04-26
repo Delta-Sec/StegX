@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: testpypi
-      url: https://test.pypi.org/p/stegx
+      url: https://test.pypi.org/p/stegx-cli
     permissions:
       id-token: write
     steps:

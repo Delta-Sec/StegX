@@ -81,6 +81,8 @@ jobs:
   security-scan:
     name: Security scanners
     runs-on: ubuntu-latest
+    env:
+      SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -107,9 +109,7 @@ jobs:
         run: pip-audit --strict
 
       - name: Snyk Code — SAST gate (high/critical)
-        if: ${{ secrets.SNYK_TOKEN != '' }}
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        if: env.SNYK_TOKEN != ''
         run: |
           pip install --upgrade snyk
           snyk auth "$SNYK_TOKEN"
