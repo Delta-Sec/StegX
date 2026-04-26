@@ -39,7 +39,7 @@ jobs:
       - name: Install build + twine + cyclonedx-bom
         run: |
           python -m pip install --upgrade pip
-          pip install build twine cyclonedx-bom
+          pip install build twine 'cyclonedx-bom>=4,<7'
 
       - name: Build wheel + sdist
         run: python -m build
@@ -47,12 +47,16 @@ jobs:
       - name: Validate distributions
         run: twine check dist/*
 
-      - name: Generate CycloneDX SBOM (declared deps only)
+      - name: Install runtime deps for env-based SBOM fallback
+        run: pip install -r requirements.txt
+
+      - name: Generate CycloneDX SBOM (JSON + XML)
         run: |
-          cyclonedx-py requirements -o sbom.json -of JSON requirements.txt || \
-            cyclonedx-py environment -o sbom.json -of JSON
-          cyclonedx-py requirements -o sbom.xml  -of XML  requirements.txt || \
-            cyclonedx-py environment -o sbom.xml  -of XML
+          set -e
+          python -m cyclonedx_py requirements \
+              --of JSON --output-reproducible -o sbom.json requirements.txt
+          python -m cyclonedx_py requirements \
+              --of XML  --output-reproducible -o sbom.xml  requirements.txt
 
       - name: Extract release version
         id: meta
