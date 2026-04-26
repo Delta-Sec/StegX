@@ -1,13 +1,11 @@
 
 ARG PYTHON_VERSION=3.12
 
-ARG PYTHON_DIGEST=sha256:aef5b94feb42e700e7b26d55546c81786bfab5a4150b6598e5f6a81abe97ceac
-
 ARG STEGX_VERSION=2.0.0
 ARG GIT_SHA=unknown
 ARG BUILD_DATE=unknown
 
-FROM python:${PYTHON_VERSION}-slim@${PYTHON_DIGEST} AS builder
+FROM python:${PYTHON_VERSION}-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -28,7 +26,7 @@ COPY src ./src
 ENV PREFIX=/install
 RUN pip install --prefix="${PREFIX}" --no-warn-script-location ".[all]"
 
-FROM python:${PYTHON_VERSION}-slim@${PYTHON_DIGEST} AS runtime
+FROM python:${PYTHON_VERSION}-slim AS runtime
 
 ARG STEGX_VERSION
 ARG GIT_SHA

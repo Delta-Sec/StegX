@@ -106,7 +106,11 @@ jobs:
         run: bandit -r src/stegx -ll
 
       - name: pip-audit — known CVEs in dependencies
-        run: pip-audit --strict --skip-editable
+        run: |
+          pip-audit --strict \
+              --requirement requirements.txt \
+              --requirement requirements/dev.txt \
+              --requirement requirements/extras.txt
 
       - name: Snyk Code — SAST gate (high/critical)
         if: env.SNYK_TOKEN != ''

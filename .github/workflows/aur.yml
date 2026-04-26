@@ -47,14 +47,53 @@ jobs:
           sed -i "s/^pkgver=.*/pkgver=${{ steps.meta.outputs.version }}/" _aur/PKGBUILD
           sed -i "s/^sha256sums=.*/sha256sums=('${{ steps.meta.outputs.sha256 }}')/" _aur/PKGBUILD
 
-      - name: Publish via aur-action
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
-        with:
-          pkgname: stegx
-          pkgbuild: _aur/PKGBUILD
-          commit_username: Delta-Sec
-          commit_email: ayhamasfoor1@gmail.com
-          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: "stegx ${{ steps.meta.outputs.version }}-1: upstream release"
-          allow_empty_commits: false
-          ssh_keyscan_types: rsa,ed25519
+      - name: Generate .SRCINFO with makepkg (Arch Linux container)
+        run: |
+          docker run --rm \
+              -v "$PWD/_aur:/work" -w /work \
+              -e VERSION="${{ steps.meta.outputs.version }}" \
+              archlinux:latest bash -c '
+                set -e
+                pacman -Sy --noconfirm --needed base-devel pacman-contrib >/dev/null
+                useradd -m builder
+                cp PKGBUILD /home/builder/PKGBUILD
+                chown -R builder:builder /home/builder
+                sudo -u builder bash -c "cd /home/builder && makepkg --printsrcinfo > /work/.SRCINFO"
+              '
+          echo "----- .SRCINFO -----"
+          cat _aur/.SRCINFO
+
+      - name: Configure SSH for AUR
+        env:
+          AUR_SSH_PRIVATE_KEY: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$AUR_SSH_PRIVATE_KEY" > ~/.ssh/aur
+          chmod 600 ~/.ssh/aur
+          ssh-keyscan -t rsa,ed25519 aur.archlinux.org >> ~/.ssh/known_hosts 2>/dev/null
+          cat > ~/.ssh/config <<'EOF'
+          Host aur.archlinux.org
+              User aur
+              IdentityFile ~/.ssh/aur
+              IdentitiesOnly yes
+              StrictHostKeyChecking yes
+          EOF
+          chmod 600 ~/.ssh/config
+
+      - name: Push PKGBUILD + .SRCINFO to AUR
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -e
+          git config --global user.name  "Delta-Sec"
+          git config --global user.email "ayhamasfoor1@gmail.com"
+          git clone ssh://aur@aur.archlinux.org/stegx.git aur-repo
+          cp _aur/PKGBUILD _aur/.SRCINFO aur-repo/
+          cd aur-repo
+          if git diff --quiet --exit-code; then
+              echo "No PKGBUILD/.SRCINFO changes — skipping AUR push."
+              exit 0
+          fi
+          git add PKGBUILD .SRCINFO
+          git commit -m "stegx ${VERSION}-1: upstream release"
+          git push origin master
