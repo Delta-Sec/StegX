@@ -6,6 +6,18 @@ export PYBUILD_SYSTEM = pyproject
 %:
 	dh $@ --with python3 --buildsystem=pybuild
 
+override_dh_auto_configure:
+	# Relax pyproject.toml dependency pins to versions actually available
+	# in Debian trixie. Distro maintainers handle CVE backports separately
+	# from the upstream version pins we keep in the PyPI sdist.
+	cp pyproject.toml pyproject.toml.deborig
+	sed -i \
+	    -e 's|"Pillow>=10\.3\.0"|"Pillow>=10.0.0"|' \
+	    -e 's|"cryptography>=44\.0\.1,<46"|"cryptography>=41.0.0,<46"|' \
+	    -e 's|"argon2-cffi>=23\.1\.0"|"argon2-cffi>=21.3.0"|' \
+	    pyproject.toml
+	dh_auto_configure
+
 override_dh_auto_test:
 	PYTHONPATH=src python3 -m pytest tests --ignore=tests/performance --ignore=tests/fuzz -q -x
 
@@ -23,6 +35,10 @@ override_dh_auto_install:
 	fi
 
 override_dh_auto_clean:
+	# Restore the original pyproject.toml so source trees are not left modified.
+	if [ -f pyproject.toml.deborig ]; then \
+	    mv pyproject.toml.deborig pyproject.toml ; \
+	fi
 	dh_auto_clean
 	rm -rf build dist src/stegx.egg-info src/*.egg-info
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
