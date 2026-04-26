@@ -1,3 +1,4 @@
+#!/usr/bin/make -f
 
 export PYBUILD_NAME = stegx
 export PYBUILD_SYSTEM = pyproject
