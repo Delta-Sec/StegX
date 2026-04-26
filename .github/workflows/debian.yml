@@ -110,7 +110,8 @@ jobs:
       - name: Smoke-test installed package
         run: |
           set -e
-          DEB=$(ls deb-out/stegx_*_all.deb | head -n 1)
+          DEB="$(readlink -f $(ls deb-out/stegx_*_all.deb | head -n 1))"
+          echo "Installing: ${DEB}"
           apt-get install -y "${DEB}"
           stegx --version
           python3 -c "import stegx; print('imported stegx', stegx.__version__)"
