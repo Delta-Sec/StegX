@@ -9,10 +9,10 @@ Build-Depends:
  pybuild-plugin-pyproject,
  python3-all (>= 3.12),
  python3-setuptools,
- python3-pil (>= 10.3.0),
- python3-cryptography (>= 44.0.1),
+ python3-pil (>= 10.0.0),
+ python3-cryptography (>= 41.0.0),
  python3-tqdm (>= 4.60.0),
- python3-argon2 (>= 23.1.0),
+ python3-argon2 (>= 21.0.0),
  python3-pytest (>= 7.0),
  python3-numpy <!nocheck>,
 Standards-Version: 4.7.0
@@ -28,10 +28,10 @@ Multi-Arch: foreign
 Depends:
  ${misc:Depends},
  ${python3:Depends},
- python3-pil (>= 10.3.0),
- python3-cryptography (>= 44.0.1),
+ python3-pil (>= 10.0.0),
+ python3-cryptography (>= 41.0.0),
  python3-tqdm (>= 4.60.0),
- python3-argon2 (>= 23.1.0)
+ python3-argon2 (>= 21.0.0)
 Recommends:
  python3-zxcvbn (>= 4.4.28),
  python3-zstandard (>= 0.22.0),
