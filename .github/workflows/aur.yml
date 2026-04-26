@@ -48,7 +48,7 @@ jobs:
           sed -i "s/^sha256sums=.*/sha256sums=('${{ steps.meta.outputs.sha256 }}')/" _aur/PKGBUILD
 
       - name: Publish via aur-action
-        uses: KSXGitHub/github-actions-deploy-aur@v2.7.2
+        uses: KSXGitHub/github-actions-deploy-aur@v4.1.3
         with:
           pkgname: stegx
           pkgbuild: _aur/PKGBUILD
