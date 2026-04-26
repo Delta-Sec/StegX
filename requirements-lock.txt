@@ -11,4 +11,4 @@ zxcvbn==4.4.28
 
 pytest==8.3.3
 pytest-cov==5.0.0
-numpy==1.26.4
+numpy==2.4.4
