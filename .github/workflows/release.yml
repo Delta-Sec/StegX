@@ -114,7 +114,7 @@ jobs:
           path: .
 
       - name: Sign distributions with sigstore
-        uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46
+        uses: sigstore/gh-action-sigstore-python@04cffa1d795717b140764e8b640de88853c92acc
         with:
           inputs: ./dist/*.whl ./dist/*.tar.gz
 
