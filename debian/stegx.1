@@ -1,0 +1,353 @@
+.\" Man page for stegx(1)
+.\" Copyright (c) 2025-2026 Delta-Sec. Licensed under the MIT licence.
+.TH STEGX 1 "April 2026" "stegx 2.0.0" "User Commands"
+
+.SH NAME
+stegx \- authenticated LSB steganography with Argon2id and AES\-GCM
+
+.SH SYNOPSIS
+.B stegx
+.RI [ global-options ]
+.I subcommand
+.RI [ options ]
+.PP
+.B stegx encode
+.B \-i
+.I COVER
+.B \-f
+.I FILE
+.B \-o
+.I OUT.png
+.RI [ encode-options ]
+.br
+.B stegx decode
+.B \-i
+.I STEGO
+.RB { \-d
+.I OUT_DIR
+.RB |
+.B \-\-stdout
+.RB |
+.B \-d \-
+.RB }
+.RI [ decode-options ]
+.br
+.B stegx shamir\-split
+.B \-k
+.I K
+.B \-n
+.I N
+.B \-f
+.I FILE
+.B \-c
+.I COVER...
+.B \-O
+.I OUT_DIR
+.RI [ encode-options ]
+.br
+.B stegx shamir\-combine
+.B \-i
+.I STEGO...
+.B \-d
+.I OUT_DIR
+.RI [ \-o
+.IR FILENAME ]
+.RI [ decode-options ]
+
+.SH DESCRIPTION
+.B stegx
+hides files inside PNG images using password\-shuffled LSB embedding and
+authenticated encryption. The payload is compressed with a
+multi\-algorithm compressor, encrypted under AES\-256\-GCM (optionally
+layered with ChaCha20\-Poly1305), framed in a versioned container whose
+header is bound as AEAD associated data, and distributed across the
+cover's pixel channels in an order determined by a password\-derived
+Argon2id key.
+.PP
+Version 2 replaces the v1 format entirely. v2 readers can still decrypt
+v1 stego images via a fallback path, but v2 stego images are not
+backwards\-compatible with 1.x.
+
+.SH GLOBAL OPTIONS
+.TP
+.BR \-v ", " \-\-version
+Print the program version and exit.
+.TP
+.B \-\-verbose
+Enable debug\-level logging to stderr.
+.TP
+.BR \-h ", " \-\-help
+Show a help message and exit. Each subcommand also supports \fB\-h\fR.
+
+.SH SUBCOMMANDS
+
+.SS stegx encode
+Hide a file inside a cover image and write a stego PNG.
+.TP
+.BI \-i \ COVER
+Cover image. A local path (PNG / BMP / etc.) or an \fBhttp://\fR /
+\fBhttps://\fR URL (size\-ceiling 50\ MiB, Content\-Type \fIimage/*\fR,
+verified with Pillow, auto\-deleted after use).
+.TP
+.BI \-f \ FILE
+Path to the file to hide.
+.TP
+.BI \-o \ OUT.png
+Output stego image. Non\-PNG extensions are coerced to \fI.png\fR for
+lossless LSB storage.
+.TP
+.BI \-p \ PASSWORD
+Password. \fBDiscouraged\fR because it appears in shell history and in
+\fI/proc/<pid>/cmdline\fR (visible via \fBps\fR(1)). Prefer the
+interactive prompt (default) or \fB\-\-password\-stdin\fR.
+.TP
+.B \-\-password\-stdin
+Read the password from a single line on stdin.
+.TP
+.BI \-\-keyfile \ PATH
+Mix an external binary (e.g. a hardware\-token dump) into the KDF
+input, acting as a second factor.
+.TP
+.BR "\-\-kdf " { argon2id | pbkdf2 }
+Password\-based KDF (default: \fBargon2id\fR).
+.TP
+.B \-\-dual\-cipher
+Layer ChaCha20\-Poly1305 on top of AES\-256\-GCM with independent keys
+for defence in depth.
+.TP
+.B \-\-adaptive
+Embed only in high\-edge\-cost regions (Laplacian edges) to resist
+CNN\-based steganalysers.
+.TP
+.BI \-\-adaptive\-cutoff \ FLOAT
+Percentile cutoff for the edge\-cost filter (0\-1, default 0.40).
+.TP
+.B \-\-matrix\-embedding
+Use F5\-style Hamming(7,3) matrix embedding for the ciphertext body.
+Reduces the per\-bit change rate by roughly 2.3x.
+.TP
+.BI \-\-max\-fill \ PCT
+Refuse payloads that would fill more than \fIPCT\fR percent of cover
+capacity (default 25.0). Above that threshold modern steganalysers win
+reliably.
+.TP
+.B \-\-strict\-password
+Reject passwords with a zxcvbn score below 3, instead of warning.
+.TP
+.B \-\-no\-preserve\-cover
+Do not match the cover's PNG encoder parameters (compress level) on
+save.
+.TP
+.B \-\-no\-compress
+Disable compression of the hidden file.
+.TP
+.BR \-\-compression " {" fast | best }
+Compression profile (default \fBbest\fR). \fBfast\fR uses zlib only.
+\fBbest\fR tries zlib\-9, LZMA2\-extreme, bzip2\-9, zstd\-22 and
+brotli\-11 in parallel and stores the smallest.
+.TP
+.BI \-\-decoy\-file \ PATH
+Hide a second (\fIdecoy\fR) payload alongside the real one for plausible
+deniability. Real and decoy occupy disjoint cover regions; either
+password unlocks only its own region.
+.TP
+.BI \-\-decoy\-password \ PASSWORD
+Password for the decoy payload (prompted if omitted).
+
+.SS stegx decode
+Extract a hidden file from a stego image.
+.TP
+.BI \-i \ STEGO
+Stego image to decode.
+.TP
+.BI \-d \ OUT_DIR
+Directory to write the extracted file. Use \fI\-\fR to pipe to stdout
+(equivalent to \fB\-\-stdout\fR).
+.TP
+.B \-\-stdout
+Write the decrypted payload to stdout instead of to a file. Useful for
+piping into another program without touching disk. Diagnostics still
+go to stderr.
+.TP
+.BI \-p \ PASSWORD
+Password. See note under \fBencode\fR.
+.TP
+.B \-\-password\-stdin
+Read the password from stdin.
+.TP
+.BI \-\-keyfile \ PATH
+Keyfile that was used during encoding; required if the stego image was
+produced with \fB\-\-keyfile\fR.
+
+.SS stegx shamir\-split
+Split a secret file into \fIn\fR Shamir shares and embed each share in
+a separate cover image. Any \fIk\fR of the resulting stego images
+reconstruct the secret. Accepts every option documented for
+\fBencode\fR in addition to:
+.TP
+.BI \-k \ K
+Threshold: minimum number of shares required to reconstruct the
+secret.
+.TP
+.BI \-n \ N
+Total number of shares to produce, with 1 <= k <= n <= 255.
+.TP
+.BI \-f \ FILE
+Secret file.
+.TP
+.BR \-c \ COVER...
+One cover image per share (exactly \fIn\fR required).
+.TP
+.BI \-O \ OUT_DIR
+Directory to write \fIstego_share_XX.png\fR files into.
+
+.SS stegx shamir\-combine
+Recover a secret from \fIk\fR or more stego shares.
+.TP
+.BR \-i \ STEGO...
+Stego shares (\fIk\fR or more).
+.TP
+.BI \-d \ OUT_DIR
+Output directory.
+.TP
+.BI \-o \ FILENAME
+Filename for the recovered secret (default: \fIrecovered_secret.bin\fR).
+.TP
+.BI \-p \ PASSWORD
+Password used when splitting.
+.TP
+.B \-\-password\-stdin
+Read the password from stdin.
+.TP
+.BI \-\-keyfile \ PATH
+Keyfile used when splitting (if any).
+
+.SH EXIT STATUS
+.TP
+.B 0
+Success.
+.TP
+.B 1
+Any failure -- missing files, wrong password, wrong keyfile, corrupted
+stego, insufficient capacity, invalid arguments, or any other error.
+All decode failure modes report the same generic error message; check
+\fB\-\-verbose\fR output for diagnostic detail.
+
+.SH EXAMPLES
+.PP
+Interactive encode with default hardening:
+.RS
+.nf
+stegx encode \-i landscape.png \-f secret.pdf \-o out.png
+.fi
+.RE
+.PP
+Cover pulled straight from a URL:
+.RS
+.nf
+stegx encode \-i https://i.example.com/abc.png \\
+      \-f secret.zip \-o out.png
+.fi
+.RE
+.PP
+Hardened profile (dual cipher + adaptive + matrix + keyfile):
+.RS
+.nf
+stegx encode \-i cover.png \-f secret.bin \-o out.png \\
+      \-\-dual\-cipher \-\-adaptive \\
+      \-\-matrix\-embedding \-\-keyfile token.bin
+.fi
+.RE
+.PP
+Plausible\-deniability decoy:
+.RS
+.nf
+stegx encode \-i cover.png \-f real.zip \-o out.png \\
+      \-\-decoy\-file harmless.txt
+.fi
+.RE
+.PP
+Decode straight into another tool without touching disk:
+.RS
+.nf
+echo \(dq$PW\(dq | stegx decode \-i out.png \\
+      \-\-password\-stdin \-\-stdout | ssh\-add \-
+.fi
+.RE
+.PP
+3\-of\-5 Shamir split and recovery:
+.RS
+.nf
+stegx shamir\-split   \-k 3 \-n 5 \-f secret.bin \\
+      \-c c1.png c2.png c3.png c4.png c5.png \-O shares/
+stegx shamir\-combine \-i shares/stego_share_01.png \\
+                     shares/stego_share_02.png \\
+                     shares/stego_share_03.png \\
+      \-d ./out \-o recovered.bin
+.fi
+.RE
+
+.SH FILES
+.TP
+.I /usr/bin/stegx
+Console-script entry point.
+.TP
+.I /usr/lib/python3/dist-packages/stegx/
+Python package containing the core modules.
+.TP
+.I /usr/share/bash-completion/completions/stegx
+Bash completion script.
+.TP
+.I /usr/share/doc/stegx/README.md
+Full project README.
+.TP
+.I /usr/share/doc/stegx/changelog.gz
+Debian changelog.
+
+.SH SECURITY
+.B stegx
+is designed to protect data at rest inside an image file. It is
+\fInot\fR a vulnerability scanner, a malware tool, or a command and
+control channel. In particular:
+.IP \(bu 2
+Passwords are read from a TTY via \fBgetpass\fR(3) by default.
+Passing \fB\-p\fR leaks the password to shell history and to
+\fBps\fR(1).
+.IP \(bu
+Wrong password, wrong keyfile and non\-StegX input all produce the
+same generic error. Do not parse the error text.
+.IP \(bu
+The key hierarchy runs the password through Argon2id (default
+\fItime=3, memory=64\ MiB, parallelism=4\fR) before HKDF\-deriving
+sub\-keys. Expect decoding to take roughly one Argon2id invocation
+(~1\ s on a modern machine).
+.IP \(bu
+The container header is authenticated as AEAD associated data;
+tampering with any flag, salt or nonce invalidates the GCM tag.
+.IP \(bu
+LSB matching (+/-1) is used by default to resist chi\-square / RS
+analysis. Matrix embedding and adaptive cost\-map filtering can be
+enabled for stronger resistance to CNN\-based steganalysers at a
+bandwidth cost.
+
+.SH SEE ALSO
+.BR age (1),
+.BR gpg (1),
+.BR openssl (1),
+.BR steghide (1),
+.BR dpkg (1)
+.PP
+Project homepage: https://github.com/Delta-Sec/StegX
+
+.SH BUGS
+Report bugs upstream at https://github.com/Delta-Sec/StegX/issues .
+Include the output of \fBstegx \-\-version\fR and a minimal
+reproducer. Never include real passwords or real payloads in a bug
+report.
+
+.SH AUTHOR
+Delta-Sec <ayhamasfoor1@gmail.com>
+
+.SH COPYRIGHT
+Copyright \(co 2025\-2026 Delta-Sec. Released under the MIT licence.
+See \fI/usr/share/doc/stegx/copyright\fR for the full licence text.

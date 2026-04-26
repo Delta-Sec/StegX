@@ -1,0 +1,47 @@
+name: stegx
+title: StegX
+summary: Authenticated LSB steganography with Argon2id and AEAD
+description: |
+  StegX hides files inside PNG images using password-shuffled LSB embedding
+  and authenticated encryption (AES-GCM / ChaCha20-Poly1305).  It supports
+  Argon2id key derivation, Shamir secret sharing, panic mode, YubiKey
+  challenge-response, and a versioned container format with HKDF
+  domain-separated sub-keys.
+
+adopt-info: stegx
+license: MIT
+source-code: https://github.com/Delta-Sec/StegX
+issues: https://github.com/Delta-Sec/StegX/issues
+website: https://github.com/Delta-Sec/StegX
+
+base: core24
+grade: stable
+confinement: strict
+compression: lzo
+
+apps:
+  stegx:
+    command: bin/stegx
+    plugs:
+      - home
+      - removable-media
+      - network
+      - raw-usb
+
+parts:
+  stegx:
+    plugin: python
+    source: .
+    source-type: local
+    python-requirements:
+      - requirements.txt
+    build-packages:
+      - build-essential
+      - libffi-dev
+      - libssl-dev
+    stage-packages:
+      - libffi8
+      - libssl3
+    override-pull: |
+      craftctl default
+      craftctl set version="$(git -C "${CRAFT_PART_SRC}" describe --tags --always | sed 's/^v//')"

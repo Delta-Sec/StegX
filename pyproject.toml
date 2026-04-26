@@ -1,0 +1,165 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools-scm>=8", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "stegx-cli"
+dynamic = ["version"]
+description = "Authenticated LSB steganography with Argon2id, AES-GCM/ChaCha20-Poly1305, v3 container format, Shamir quorum and plausible-deniability panic mode"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Delta-Sec", email = "ayhamasfoor1@gmail.com" },
+]
+maintainers = [
+    { name = "Delta-Sec", email = "ayhamasfoor1@gmail.com" },
+]
+keywords = [
+    "steganography",
+    "encryption",
+    "argon2id",
+    "aes-gcm",
+    "chacha20-poly1305",
+    "lsb",
+    "png",
+    "plausible-deniability",
+    "shamir-secret-sharing",
+    "yubikey",
+    "panic-mode",
+    "security",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Topic :: Security :: Cryptography",
+    "Topic :: Multimedia :: Graphics",
+    "Topic :: System :: Archiving",
+    "Topic :: Utilities",
+    "Typing :: Typed",
+]
+dependencies = [
+
+    "Pillow>=10.3.0",
+
+    "cryptography>=44.0.1,<46",
+    "tqdm>=4.60.0",
+    "argon2-cffi>=23.1.0",
+]
+
+[project.optional-dependencies]
+compression = [
+    "zstandard>=0.22.0",
+    "brotli>=1.1.0",
+]
+strength = [
+    "zxcvbn>=4.4.28",
+]
+all = [
+    "zstandard>=0.22.0",
+    "brotli>=1.1.0",
+    "zxcvbn>=4.4.28",
+]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+    "numpy>=1.20.0",
+    "bandit>=1.7.0",
+    "pip-audit>=2.6.0",
+    "build>=1.2",
+    "twine>=5",
+]
+docs = [
+    "sphinx>=7.3",
+    "myst-parser>=3",
+    "furo>=2024.5.6",
+    "sphinx-copybutton>=0.5",
+    "sphinx-design>=0.6",
+    "sphinx-autodoc-typehints>=2",
+]
+
+[project.urls]
+Homepage      = "https://github.com/Delta-Sec/StegX"
+Documentation = "https://delta-sec.github.io/StegX/"
+Repository    = "https://github.com/Delta-Sec/StegX.git"
+Issues        = "https://github.com/Delta-Sec/StegX/issues"
+Changelog     = "https://github.com/Delta-Sec/StegX/blob/main/CHANGELOG.md"
+Security      = "https://github.com/Delta-Sec/StegX/blob/main/SECURITY.md"
+
+[project.scripts]
+stegx = "stegx.cli:main"
+
+[tool.setuptools]
+include-package-data = true
+zip-safe = false
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["stegx*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+stegx = ["py.typed", "data/*.zstd"]
+
+[tool.setuptools.exclude-package-data]
+"*" = ["tests/*", "tests/**/*", "__pycache__/*"]
+
+[tool.setuptools_scm]
+write_to = "src/stegx/_version.py"
+fallback_version = "2.0.0"
+local_scheme = "no-local-version"
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+markers = [
+    "security: security-oriented tests (AEAD, sentinel, timing)",
+    "performance: slow benchmarks that may take minutes",
+    "slow: tests that are slow to run",
+    "fuzz: hypothesis/property-based tests",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.coverage.run]
+branch = true
+source = ["stegx"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+precision = 1
+show_missing = true
+skip_covered = true
+
+[tool.pyright]
+include = ["src", "tests"]
+exclude = ["**/__pycache__"]
+pythonVersion = "3.12"
+
+[tool.mypy]
+python_version = "3.12"
+mypy_path = "src"
+packages = ["stegx"]
+
+[tool.bandit]
+exclude_dirs = ["tests", "docs"]
+skips = ["B101"]

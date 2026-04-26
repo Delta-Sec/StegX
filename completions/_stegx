@@ -1,0 +1,115 @@
+#compdef stegx
+# zsh completion for stegx(1)
+#
+# Install (system-wide):
+#   sudo install -Dm0644 _stegx /usr/share/zsh/site-functions/_stegx
+#
+# Install (per-user):
+#   install -Dm0644 _stegx ~/.zsh/completions/_stegx
+#   # and add `fpath=(~/.zsh/completions $fpath)` before `compinit` in ~/.zshrc
+
+_stegx() {
+    local curcontext="$curcontext" state line
+    local -a subcommands
+
+    subcommands=(
+        'encode:Hide a file in a cover image'
+        'decode:Extract a hidden file from a stego image'
+        'shamir-split:Split a secret file into k-of-n stego shares'
+        'shamir-combine:Recover a secret from k-or-more stego shares'
+        'benchmark:Measure Argon2id / compression performance'
+    )
+
+    _arguments -C \
+        '(- *)-h[Show help]' \
+        '(- *)--help[Show help]' \
+        '(- *)-v[Show version]' \
+        '(- *)--version[Show version]' \
+        '--verbose[Enable debug logging]' \
+        '1: :->subcommand' \
+        '*::arg:->args'
+
+    case "$state" in
+        subcommand)
+            _describe -t commands 'stegx subcommand' subcommands
+            ;;
+        args)
+            case "$line[1]" in
+                encode)         _stegx_encode ;;
+                decode)         _stegx_decode ;;
+                shamir-split)   _stegx_shamir_split ;;
+                shamir-combine) _stegx_shamir_combine ;;
+                benchmark)      _stegx_benchmark ;;
+            esac
+            ;;
+    esac
+}
+
+_stegx_encode() {
+    _arguments \
+        '(-i --image)'{-i,--image}'[Cover image (file path or http(s) URL)]:cover:_files' \
+        '(-f --file)'{-f,--file}'[File to hide]:file:_files' \
+        '(-o --output)'{-o,--output}'[Output stego PNG]:output:_files' \
+        '(-p --password)'{-p,--password}'[Password (discouraged)]:password:' \
+        '--password-stdin[Read password from stdin]' \
+        '--keyfile[Optional keyfile for 2FA]:keyfile:_files' \
+        '--kdf[Password-based KDF]:kdf:(argon2id pbkdf2)' \
+        '--dual-cipher[Layer ChaCha20-Poly1305 over AES-GCM]' \
+        '--adaptive[Embed only in textured regions]' \
+        '--adaptive-cutoff[Percentile cutoff for --adaptive]:cutoff:' \
+        '--matrix-embedding[F5-style Hamming(7,3) matrix embedding]' \
+        '--max-fill[Max percent of cover capacity]:pct:' \
+        '--strict-password[Refuse weak passwords (zxcvbn < 3)]' \
+        '--no-preserve-cover[Do not mirror cover encoder params]' \
+        '--no-compress[Disable compression]' \
+        '--compression[Compression profile]:mode:(fast best)' \
+        '--decoy-file[Decoy payload for deniability]:decoy:_files' \
+        '--decoy-password[Decoy password]:password:' \
+        '(- *)'{-h,--help}'[Show help]'
+}
+
+_stegx_decode() {
+    _arguments \
+        '(-i --image)'{-i,--image}'[Stego image]:stego:_files' \
+        '(-d --destination)'{-d,--destination}'[Output directory (or - for stdout)]:dir:_files -/' \
+        '--stdout[Write payload to stdout]' \
+        '(-p --password)'{-p,--password}'[Password]:password:' \
+        '--password-stdin[Read password from stdin]' \
+        '--keyfile[Keyfile for 2FA]:keyfile:_files' \
+        '(- *)'{-h,--help}'[Show help]'
+}
+
+_stegx_shamir_split() {
+    _arguments \
+        '-k[Threshold]:k:' \
+        '-n[Total shares]:n:' \
+        '(-f --file)'{-f,--file}'[Secret file]:file:_files' \
+        '(-c --cover)'{-c,--cover}'[Cover images]:covers:_files' \
+        '(-O --out-dir)'{-O,--out-dir}'[Output directory]:dir:_files -/' \
+        '(-p --password)'{-p,--password}'[Password]:password:' \
+        '--password-stdin[Read password from stdin]' \
+        '--keyfile[Keyfile]:keyfile:_files' \
+        '--kdf[Password-based KDF]:kdf:(argon2id pbkdf2)' \
+        '--compression[Compression profile]:mode:(fast best)' \
+        '(- *)'{-h,--help}'[Show help]'
+}
+
+_stegx_shamir_combine() {
+    _arguments \
+        '(-i --image)'{-i,--image}'[Stego shares]:stego:_files' \
+        '(-d --destination)'{-d,--destination}'[Output directory]:dir:_files -/' \
+        '(-o --output)'{-o,--output}'[Recovered filename]:filename:' \
+        '(-p --password)'{-p,--password}'[Password]:password:' \
+        '--password-stdin[Read password from stdin]' \
+        '--keyfile[Keyfile]:keyfile:_files' \
+        '(- *)'{-h,--help}'[Show help]'
+}
+
+_stegx_benchmark() {
+    _arguments \
+        '--iterations[Argon2 samples to average]:n:' \
+        '--size-kib[Compression sample size in KiB]:size:' \
+        '(- *)'{-h,--help}'[Show help]'
+}
+
+_stegx "$@"

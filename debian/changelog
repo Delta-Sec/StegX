@@ -1,0 +1,77 @@
+stegx (2.0.0-1) unstable; urgency=medium
+
+  * Major security rewrite -- versioned AEAD container format (56-byte
+    header bound as associated data) and Argon2id password KDF.
+  * New: HKDF-SHA256 domain-separated sub-keys for AES-GCM,
+    ChaCha20-Poly1305, pixel-shuffle seed and per-image sentinel.
+  * New: LSB matching (+/-1) replaces LSB replacement by default,
+    defeating chi-square / RS analysis.
+  * New: Per-image HMAC-derived sentinel; no fixed STEGX_EOD marker.
+  * New: PNG metadata stripping and cover encoder-parameter preservation.
+  * New: --dual-cipher option layers ChaCha20-Poly1305 over AES-256-GCM
+    with independent keys.
+  * New: --keyfile option mixes external key material into the KDF input
+    (password + keyfile = two-factor).
+  * New: --adaptive option embeds only in high-edge-cost regions
+    (Laplacian cost map); --matrix-embedding applies F5-style Hamming(7,3)
+    matrix embedding to the ciphertext body.
+  * New: --max-fill PCT capacity ceiling refuses payloads above the
+    steganalyser-detection threshold (default 25%).
+  * New: --decoy-file / --decoy-password for plausible-deniability.
+  * New: shamir-split / shamir-combine subcommands for k-of-n Secret
+    Sharing across multiple cover images (GF(2^8), polynomial 0x11D).
+  * New: Cover images may be fetched from http(s) URLs with safety caps.
+  * New: --stdout / -d - writes the decrypted payload to stdout instead
+    of disk, for pipe-into-program workflows.
+  * New: Multi-algorithm compression multiplexer -- zlib, LZMA2-extreme,
+    bzip2, zstd-22 and brotli-11 run in parallel and the smallest wins;
+    typical 40-75% smaller output than zlib alone on compressible data.
+  * New: zxcvbn password-strength gate (--strict-password enforces,
+    otherwise warns on score < 3).
+  * Changed: default CLI flow uses getpass for interactive password entry;
+    --password-stdin for scripting; -p still works but warns because it
+    leaks into shell history and ps.
+  * Changed: decode subcommand now reports a single generic error for
+    wrong password, wrong keyfile and non-StegX image (no oracle).
+  * Changed: embed/extract subcommands renamed to encode/decode.
+  * Changed: Sentinel comparison uses hmac.compare_digest (constant-time).
+  * Changed: Best-effort zeroisation of master keys and sub-keys after use.
+  * Changed: Payload metadata bumped to version 3 (adds compression_alg).
+  * Fixed: AEAD AAD canonicalisation -- encrypt and decrypt sides now
+    both use header bytes with inner_ct_length zeroed.
+  * Fixed: Shamir GF(2^8) polynomial changed from 0x11B (AES, where the
+    element 2 has order 51) to 0x11D (where 2 is primitive, order 255).
+  * Fixed: SHA-256 seed derivation replaced with Argon2id -> HKDF, closing
+    CodeQL rule py/weak-sensitive-data-hashing.
+  * Compatibility: StegX 2.0 reads v1 stego images via a fallback path,
+    but v2 stego images cannot be read by 1.x.
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>  Thu, 23 Apr 2026 14:45:00 +0300
+
+stegx (1.2.1-1) unstable; urgency=high
+
+  * Security: PRNG seed for pixel-shuffle is now derived via
+    PBKDF2-HMAC-SHA256 (390,000 iterations, fixed application-specific
+    salt) instead of a single SHA-256 pass. Closes CodeQL rule
+    py/weak-sensitive-data-hashing on stegx/stegx_core/steganography.py.
+  * Security note: stego images produced by <= 1.1.0 are no longer
+    decodable with 1.2.1 because the seed changed.
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>  Sun, 20 Apr 2026 09:00:00 +0300
+
+stegx (1.1.0-1) unstable; urgency=medium
+
+  * Added secure LSB steganography with AES-256-GCM.
+  * Enhanced encryption and data integrity.
+  * Supports PNG, BMP, and other image formats.
+  * Added data compression to maximize storage capacity.
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>  Wed, 11 Jun 2025 19:00:00 +0300
+
+stegx (1.0.0-1) unstable; urgency=high
+
+  * Initial release of StegX.
+  * Basic LSB steganography support.
+  * Command-line interface for embedding and extracting data.
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>  Mon, 15 May 2025 12:00:00 +0300

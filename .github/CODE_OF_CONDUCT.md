@@ -81,5 +81,5 @@ This Code of Conduct is adapted from the [Contributor Covenant](https://www.cont
 
 The enforcement guidelines are inspired by Mozilla’s code of conduct enforcement ladder.
 
-For FAQs, see: https://www.contributor-covenant.org/faq  
+For FAQs, see: https://www.contributor-covenant.org/faq
 Translations: https://www.contributor-covenant.org/translations

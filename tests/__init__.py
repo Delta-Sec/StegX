@@ -1,1 +1,1 @@
-from stegx_core import *
+from stegx import *

@@ -1,18 +1,21 @@
-#!/usr/bin/env python3
+
+import argparse
 import os
-import pytest
 import tempfile
 
-from stegx_core.steganography import embed_data, extract_data
-from stegx_core.crypto import encrypt_data, decrypt_data
-from stegx_core.utils import create_payload, parse_payload
+import numpy as np
+import pytest
+from PIL import Image
 
-from stegx import perform_encode, perform_decode
+from stegx import perform_decode, perform_encode
+from stegx.steganography import EmbedOptions, embed_v2, extract_v2
+
+TEST_PASSWORD = "integration-test-passphrase-4242"
 
 @pytest.fixture
 def temp_dir():
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        yield tmpdirname
+    with tempfile.TemporaryDirectory() as t:
+        yield t
 
 @pytest.fixture
 def sample_data():
@@ -20,115 +23,153 @@ def sample_data():
 
 @pytest.fixture
 def test_file(temp_dir, sample_data):
-    file_path = os.path.join(temp_dir, "test_file.txt")
-    with open(file_path, "wb") as f:
+    p = os.path.join(temp_dir, "payload.txt")
+    with open(p, "wb") as f:
         f.write(sample_data)
-    return file_path
+    return p
 
 @pytest.fixture
 def test_image(temp_dir):
-    from PIL import Image
-    import numpy as np
+    rng = np.random.default_rng(seed=42)
+    arr = rng.integers(0, 256, (200, 200, 3), dtype=np.uint8)
+    img = Image.fromarray(arr, "RGB")
+    p = os.path.join(temp_dir, "cover.png")
+    img.save(p)
+    return p
 
-    width, height = 100, 100
-    img_array = np.random.randint(0, 256, (height, width, 3), dtype=np.uint8)
-    img = Image.fromarray(img_array, "RGB")
+def _encode_args(image, infile, output):
+    return argparse.Namespace(
+        image=image,
+        file=infile,
+        output=output,
+        password=TEST_PASSWORD,
+        password_stdin=False,
+        keyfile=None,
+        kdf="argon2id",
+        dual_cipher=False,
+        adaptive=False,
+        adaptive_cutoff=0.40,
+        adaptive_mode="laplacian",
+        matrix_embedding=False,
+        max_fill=100.0,
+        strict_password=False,
+        no_preserve_cover=False,
+        compress=True,
+        compression="best",
+        always_split_cover=False,
+        fips=False,
+        decoy_file=None,
+        decoy_password=None,
+    )
 
-    image_path = os.path.join(temp_dir, "cover_image.png")
-    img.save(image_path)
-    
-    return image_path
+def _decode_args(image, destination):
+    return argparse.Namespace(
+        image=image,
+        destination=destination,
+        password=TEST_PASSWORD,
+        password_stdin=False,
+        keyfile=None,
+    )
 
-def test_encode_flow_integration(test_file, test_image, temp_dir, sample_data):
-    password = "StegXTestPassword123!@#"
-    output_path = os.path.join(temp_dir, "stego_output.png")
+def test_full_encode_decode_flow(temp_dir, test_image, test_file, sample_data):
+    stego = os.path.join(temp_dir, "stego.png")
+    assert perform_encode(_encode_args(test_image, test_file, stego)) is True
+    assert os.path.isfile(stego)
 
-    payload = create_payload(test_file, compress=True)
+    out_dir = os.path.join(temp_dir, "out")
+    os.makedirs(out_dir, exist_ok=True)
+    assert perform_decode(_decode_args(stego, out_dir)) is True
 
-    encrypted_payload = encrypt_data(payload, password)
+    recovered = os.path.join(out_dir, os.path.basename(test_file))
+    assert os.path.isfile(recovered)
+    with open(recovered, "rb") as f:
+        assert f.read() == sample_data
 
-    embed_data(test_image, encrypted_payload, output_path)
+def test_core_embed_extract_bytes(temp_dir, test_image):
+    stego = os.path.join(temp_dir, "stego_core.png")
+    payload = b"raw v2 bytes payload"
+    embed_v2(test_image, payload, stego, TEST_PASSWORD, EmbedOptions(max_fill_ratio=1.0))
+    assert extract_v2(stego, TEST_PASSWORD) == payload
 
-    assert os.path.exists(output_path)
+def test_wrong_password_decode_returns_false(temp_dir, test_image, test_file):
+    stego = os.path.join(temp_dir, "stego.png")
+    assert perform_encode(_encode_args(test_image, test_file, stego)) is True
+    args = _decode_args(stego, os.path.join(temp_dir, "out"))
+    args.password = "wrong-password"
+    assert perform_decode(args) is False
 
-    extracted_encrypted_payload = extract_data(output_path)
+def test_missing_cover_fails(temp_dir, test_file):
+    stego = os.path.join(temp_dir, "stego.png")
+    args = _encode_args("does-not-exist.png", test_file, stego)
+    assert perform_encode(args) is False
 
-    decrypted_payload = decrypt_data(extracted_encrypted_payload, password)
+def test_decode_to_stdout(temp_dir, test_image, test_file, sample_data, capsysbinary):
+    stego = os.path.join(temp_dir, "stego.png")
+    assert perform_encode(_encode_args(test_image, test_file, stego)) is True
+    capsysbinary.readouterr()
 
-    filename, file_data = parse_payload(decrypted_payload)
+    args = argparse.Namespace(
+        image=stego,
+        destination=None,
+        stdout=True,
+        password=TEST_PASSWORD,
+        password_stdin=False,
+        keyfile=None,
+    )
+    assert perform_decode(args) is True
+    captured = capsysbinary.readouterr()
+    assert captured.out == sample_data
 
-    assert file_data == sample_data
-    assert filename == os.path.basename(test_file)
+def test_decode_dash_destination_means_stdout(temp_dir, test_image, test_file, sample_data, capsysbinary):
+    stego = os.path.join(temp_dir, "stego.png")
+    assert perform_encode(_encode_args(test_image, test_file, stego)) is True
+    capsysbinary.readouterr()
 
-def test_high_level_encode_decode_integration(test_file, test_image, temp_dir, sample_data):
-    password = "StegXTestPassword123!@#"
-    output_path = os.path.join(temp_dir, "stego_output.png")
-    extract_dir = os.path.join(temp_dir, "extracted")
-    os.makedirs(extract_dir, exist_ok=True)
+    args = argparse.Namespace(
+        image=stego,
+        destination="-",
+        stdout=False,
+        password=TEST_PASSWORD,
+        password_stdin=False,
+        keyfile=None,
+    )
+    assert perform_decode(args) is True
+    captured = capsysbinary.readouterr()
+    assert captured.out == sample_data
 
-    success = perform_encode(test_image, test_file, output_path, password, compress=True)
+def test_decode_requires_destination_or_stdout(temp_dir, test_image, test_file):
+    stego = os.path.join(temp_dir, "stego.png")
+    assert perform_encode(_encode_args(test_image, test_file, stego)) is True
 
-    assert success
-    assert os.path.exists(output_path)
+    args = argparse.Namespace(
+        image=stego,
+        destination=None,
+        stdout=False,
+        password=TEST_PASSWORD,
+        password_stdin=False,
+        keyfile=None,
+    )
+    assert perform_decode(args) is False
 
-    success = perform_decode(output_path, extract_dir, password)
+def test_batch_multifile_roundtrip(temp_dir, test_image):
+    f1 = os.path.join(temp_dir, "a.txt")
+    f2 = os.path.join(temp_dir, "b.bin")
+    f3 = os.path.join(temp_dir, "c.json")
+    with open(f1, "wb") as f: f.write(b"contents of a")
+    with open(f2, "wb") as f: f.write(b"\x00\x01\x02 binary contents of b \xff")
+    with open(f3, "wb") as f: f.write(b'{"key": "value", "num": 42}')
 
-    assert success
+    stego = os.path.join(temp_dir, "stego_bundle.png")
+    enc = _encode_args(test_image, f1, stego)
+    enc.file = [f1, f2, f3]
+    assert perform_encode(enc) is True
 
-    extracted_file_path = os.path.join(extract_dir, os.path.basename(test_file))
-    assert os.path.exists(extracted_file_path)
-    
-    with open(extracted_file_path, "rb") as f:
-        extracted_data = f.read()
-    
-    assert extracted_data == sample_data
+    out_dir = os.path.join(temp_dir, "extracted_bundle")
+    os.makedirs(out_dir, exist_ok=True)
+    assert perform_decode(_decode_args(stego, out_dir)) is True
 
-def test_encode_flow_error_handling(test_file, test_image, temp_dir):
-    password = "StegXTestPassword123!@#"
-    output_path = os.path.join(temp_dir, "stego_output.png")
-
-    non_existent_file = os.path.join(temp_dir, "non_existent.txt")
-    success = perform_encode(test_image, non_existent_file, output_path, password, compress=True)
-    assert not success
-
-    non_existent_image = os.path.join(temp_dir, "non_existent.png")
-    success = perform_encode(non_existent_image, test_file, output_path, password, compress=True)
-    assert not success
-
-    success = perform_encode(test_image, test_file, output_path, "", compress=True)
-    assert not success
-
-@pytest.mark.parametrize("file_extension,file_content", [
-    (".txt", b"Plain text content"),
-    (".json", b'{"key": "value"}'),
-    (".bin", bytes(range(256))),
-    (".pdf", b"%PDF-1.5\n%Test PDF content")
-])
-def test_encode_decode_different_file_types(temp_dir, test_image, file_extension, file_content):
-
-    test_file = os.path.join(temp_dir, f"test_file{file_extension}")
-    with open(test_file, "wb") as f:
-        f.write(file_content)
-
-    password = "StegXTestPassword123!@#"
-    output_path = os.path.join(temp_dir, "stego_output.png")
-    extract_dir = os.path.join(temp_dir, "extracted")
-    os.makedirs(extract_dir, exist_ok=True)
-
-    success = perform_encode(test_image, test_file, output_path, password, compress=True)
-    assert success
-
-    success = perform_decode(output_path, extract_dir, password)
-    assert success
-
-    extracted_file_path = os.path.join(extract_dir, os.path.basename(test_file))
-    assert os.path.exists(extracted_file_path)
-    
-    with open(extracted_file_path, "rb") as f:
-        extracted_data = f.read()
-    
-    assert extracted_data == file_content
-
-
-if __name__ == "__main__":
-    pytest.main(["-v", __file__])
+    for orig in (f1, f2, f3):
+        recovered = os.path.join(out_dir, os.path.basename(orig))
+        assert os.path.isfile(recovered), f"Missing bundle member: {recovered}"
+        with open(orig, "rb") as a, open(recovered, "rb") as b:
+            assert a.read() == b.read()

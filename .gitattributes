@@ -1,0 +1,26 @@
+* text=auto
+
+DEBIAN/control    text eol=lf
+DEBIAN/changelog  text eol=lf
+DEBIAN/copyright  text eol=lf
+DEBIAN/README.Debian text eol=lf
+DEBIAN/postinst   text eol=lf
+DEBIAN/prerm      text eol=lf
+DEBIAN/postrm     text eol=lf
+DEBIAN/stegx.1    text eol=lf
+
+*.sh              text eol=lf
+
+*.py              text eol=lf
+
+*.png             binary
+*.jpg             binary
+*.jpeg            binary
+*.bmp             binary
+*.gif             binary
+*.webp            binary
+*.zip             binary
+*.gz              binary
+*.xz              binary
+debian/* eol=lf
+*.sh eol=lf

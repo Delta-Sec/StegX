@@ -1,0 +1,102 @@
+name: debian
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "debian/**"
+      - "src/**"
+      - "pyproject.toml"
+      - "tests/**"
+      - ".github/workflows/debian.yml"
+  pull_request:
+    paths:
+      - "debian/**"
+      - "src/**"
+      - "pyproject.toml"
+      - "tests/**"
+      - ".github/workflows/debian.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: debian-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-deb:
+    name: Build .deb on ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+
+        include:
+          - image: debian:trixie-slim
+            name: trixie
+    container:
+      image: ${{ matrix.image }}
+      options: --user root
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install build tooling
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y \
+              build-essential \
+              devscripts \
+              debhelper-compat \
+              dh-python \
+              pybuild-plugin-pyproject \
+              python3-all \
+              python3-setuptools \
+              python3-pil \
+              python3-cryptography \
+              python3-tqdm \
+              python3-argon2 \
+              python3-pytest \
+              python3-numpy \
+              lintian \
+              fakeroot \
+              git
+
+      - name: Mark workspace safe for git (container runs as root)
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Build binary .deb (skip upstream tests during dh build)
+        env:
+          DEB_BUILD_OPTIONS: nocheck
+        run: |
+          dpkg-buildpackage -us -uc -b
+
+      - name: Run lintian on the produced .deb
+        run: |
+          set -e
+          DEB=$(ls ../stegx_*_all.deb | head -n 1)
+          echo "Produced: ${DEB}"
+          lintian --pedantic --info "${DEB}" || true
+
+          lintian --fail-on=error "${DEB}"
+
+      - name: Smoke-test installed package
+        run: |
+          set -e
+          DEB=$(ls ../stegx_*_all.deb | head -n 1)
+          apt-get install -y "${DEB}"
+          stegx --version
+          python3 -c "import stegx; print('imported stegx', stegx.__version__)"
+
+      - name: Upload artefact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stegx-deb-${{ matrix.name }}
+          path: |
+            ../stegx_*_all.deb
+            ../stegx_*.buildinfo
+            ../stegx_*.changes
+          if-no-files-found: error
+          retention-days: 14

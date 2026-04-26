@@ -1,6 +1,6 @@
 # 🤝 Contributing to StegX
 
-Thank you for your interest in contributing to **StegX**!  
+Thank you for your interest in contributing to **StegX**!
 We welcome contributions from the community, whether it’s code, documentation, bug reports, or feature suggestions.
 
 ---
@@ -9,7 +9,7 @@ We welcome contributions from the community, whether it’s code, documentation,
 
 Follow these steps to make a contribution:
 
-1. **Fork** the repository  
+1. **Fork** the repository
    Click the “Fork” button at the top-right of the [StegX repo](https://github.com/Delta-Sec/StegX).
 
 2. **Clone** your fork to your local machine:

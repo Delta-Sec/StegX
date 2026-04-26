@@ -1,0 +1,31 @@
+version: v1.25.0
+
+ignore:
+
+  python/TarSlip:
+    - 'src/stegx/utils.py':
+        reason: >-
+          Defended by Python 3.12 filter="data" + _is_member_safe realpath
+          containment + MAX_BUNDLE_MEMBERS/MAX_BUNDLE_TOTAL_BYTES caps.
+        expires: 2027-04-23T00:00:00.000Z
+
+  python/PT:
+    - 'src/stegx/cli.py':
+        reason: >-
+          CLI tool: argparse Namespace paths ARE the intended input surface.
+          Routed through validate_user_path + sink_safe_path.
+        expires: 2027-04-23T00:00:00.000Z
+    - 'src/stegx/audit_log.py':
+        reason: >-
+          STEGX_CONFIG_HOME is user-trusted env; O_EXCL|O_NOFOLLOW + fstat
+          ownership checks neutralise the concrete attacks.
+        expires: 2027-04-23T00:00:00.000Z
+
+  python/HardcodedPassword:
+    - 'tests/**/*.py':
+        reason: Deterministic test fixtures, not real credentials.
+        expires: 2027-04-23T00:00:00.000Z
+  python/NoHardcodedPasswords/test:
+    - 'tests/**/*.py':
+        reason: Deterministic test fixtures, not real credentials.
+        expires: 2027-04-23T00:00:00.000Z

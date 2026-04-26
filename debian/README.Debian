@@ -1,0 +1,84 @@
+StegX for Debian
+================
+
+This is the Debian package of StegX -- authenticated LSB steganography with
+Argon2id key derivation, AES-256-GCM (with optional ChaCha20-Poly1305
+dual-cipher), per-image HMAC sentinels, LSB-matching (+/-1) embedding and
+plausible-deniability / k-of-n Shamir features. See /usr/share/doc/stegx/
+for the full README and changelog.
+
+File layout installed by this package
+-------------------------------------
+
+  /usr/bin/stegx                                       Console-script entry point.
+  /usr/lib/python3/dist-packages/stegx/                Python package (dh_python3).
+  /usr/share/bash-completion/completions/stegx         Bash completion.
+  /usr/share/doc/stegx/README.md                       Main project README.
+  /usr/share/doc/stegx/changelog.gz                    This changelog, compressed.
+  /usr/share/doc/stegx/copyright                       MIT licence text.
+  /usr/share/man/man1/stegx.1.gz                       Man page (stegx(1)).
+
+Subcommands (changed in 2.0)
+----------------------------
+
+The 1.x subcommands "embed" and "extract" were renamed to "encode" and
+"decode" in 2.0. Two additional subcommands were added:
+
+  stegx encode -i COVER -f FILE -o OUT.png [options]
+  stegx decode -i STEGO [-d OUT_DIR | --stdout]
+  stegx shamir-split   -k K -n N -f FILE -c COVER... -O OUT_DIR
+  stegx shamir-combine -i STEGO... -d OUT_DIR [-o FILENAME]
+
+Quick examples
+--------------
+
+  stegx encode -i cover.png -f secret.zip -o stego.png
+
+  echo "$PASS" | stegx decode -i stego.png --password-stdin --stdout | jq .
+
+  stegx encode -i cover.png -f real.zip -o stego.png \
+        --decoy-file harmless.txt
+
+  stegx shamir-split -k 3 -n 5 -f secret.bin \
+        -c c1.png c2.png c3.png c4.png c5.png -O shares/
+
+Security notes
+--------------
+
+* Prefer the interactive prompt over the -p/--password flag; -p exposes
+  the password in shell history and in /proc/<pid>/cmdline (visible via
+  ps). The tool warns when -p is used.
+* The --strict-password flag turns the zxcvbn score < 3 warning into a
+  refusal. Consider enabling it in automation pipelines.
+* The --dual-cipher option layers ChaCha20-Poly1305 over AES-GCM; only
+  enable if you are specifically guarding against a catastrophic break
+  of one cipher, because it roughly doubles encryption time.
+* The --keyfile flag mixes an external binary (e.g. a hardware-token
+  dump) into the KDF input. Lose the keyfile and the payload is
+  unrecoverable even with the correct password.
+* All decode failure modes (wrong password, wrong keyfile, not a
+  StegX image) report a single generic error intentionally, to deny
+  an observer an oracle.
+
+Dependencies
+------------
+
+Hard dependencies (the tool refuses to run without them):
+
+  python3-pil, python3-cryptography, python3-tqdm, python3-argon2
+
+Optional dependencies (features gracefully degrade if absent):
+
+  python3-zxcvbn      -- password-strength gate (skipped if missing)
+  python3-zstandard   -- zstd-22 in the compression multiplexer
+  python3-brotli      -- brotli-11 in the compression multiplexer
+
+Bug reports
+-----------
+
+Please file issues against the upstream project at
+https://github.com/Delta-Sec/StegX . Include the output of
+`stegx --version` and, if relevant, a minimal cover + payload that
+reproduces the bug (never include real passwords or real payloads).
+
+ -- Delta-Sec <ayhamasfoor1@gmail.com>

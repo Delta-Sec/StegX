@@ -1,10 +1,18 @@
 version: 2
 updates:
   - package-ecosystem: "pip"
-    directory: "/"          
+    directory: "/"
     schedule:
       interval: "weekly"
   - package-ecosystem: "pip"
-    directory: "/tests"      
+    directory: "/tests"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
     schedule:
       interval: "weekly"

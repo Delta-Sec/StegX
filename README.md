@@ -1,42 +1,130 @@
 ![Stegx_Github](https://github.com/user-attachments/assets/f569fc67-7c0a-47ca-833e-d088ab1cb243)
 
-# StegX: Non-linear LSB Steganography Tool with AES Encryption
+# StegX 2.0: Authenticated LSB Steganography with Argon2id + AES-GCM
 
-[![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Parrot OS Verified](https://img.shields.io/badge/Parrot%20OS-Verified-brightgreen?logo=linux)](https://parrotsec.org/)
 [![Steganalysis Tested](https://img.shields.io/badge/Steganalysis-Tested-blueviolet)]()
-[![Security: AES-GCM](https://img.shields.io/badge/Security-AES--256--GCM-critical)]()
-[![Tests: 51 Passed](https://img.shields.io/badge/Tests-51%20passed-brightgreen)]()
+[![Security: AES-GCM + ChaCha20](https://img.shields.io/badge/Security-AES--256--GCM%20%2B%20ChaCha20--Poly1305-critical)]()
+[![KDF: Argon2id](https://img.shields.io/badge/KDF-Argon2id-brightgreen)]()
+[![Tests: 255 Passed](https://img.shields.io/badge/Tests-255%20passed-brightgreen)]()
 
-StegX is a command-line tool written in Python for hiding files within images using non-linear Least Significant Bit (LSB) steganography technique. It enhances security by encrypting the hidden data using AES-256-GCM and ensures data integrity.
+StegX hides files inside PNG images using password-shuffled LSB embedding and
+authenticated encryption. Version 2 is a ground-up security rewrite built
+around a versioned container format, Argon2id key derivation, domain-separated
+HKDF sub-keys, LSB-matching (±1) embedding that defeats chi-square steganalysis
+and — optionally — ChaCha20-Poly1305 dual-cipher, F5-style matrix embedding,
+adaptive cost-map filtering, keyfile 2FA, plausible-deniability decoy payloads,
+and k-of-n Shamir secret sharing across multiple cover images.
 
-## Features
+## What's New in 2.0
 
-*   **Hide Files:** Embed any type of file (documents, executables, archives, etc.) within a cover image using Non-linear LSB.
-*   **Extract Files:** Retrieve the original hidden file from a stego-image.
-*   **Supported Image Formats:** 
-    *   **Input (Cover/Stego):** PNG format supported by Pillow. Palette-based images (Mode 'P') are automatically converted to RGBA.
-    *   **Output (Stego):** PNG is strongly recommended and used by default for lossless saving, preserving the LSB data.
-*   **AES-256-GCM Encryption:** Encrypts the data payload (including metadata) using AES in GCM mode, providing confidentiality and authenticity. Requires a password for both hiding and extraction.
-*   **Secure Key Derivation:** Uses PBKDF2HMAC with SHA256 and a unique salt (stored with data) to derive the encryption key from the password, protecting against precomputation attacks.
-*   **Data Compression:** Optionally compresses the file data using zlib before encryption to potentially increase the amount of data that can be hidden or reduce the required image size. Compression is only applied if it results in smaller data.
-*   **Metadata Storage:** Embeds essential metadata (original filename, original file size, compression status, encryption salt & nonce) securely alongside the file data.
-*   **Capacity Check:** Automatically verifies if the cover image has sufficient capacity in its LSBs to store the encrypted and potentially compressed data, including metadata and a termination sentinel.
-*   **Data Integrity:** Uses a unique sentinel (`STEGX_EOD`) to mark the end of the hidden data, ensuring correct extraction.
-*   **Progress Bar:** Displays a progress bar using `tqdm` for embedding and extraction operations (visible for larger files/images).
-*   **Command-Line Interface:** User-friendly CLI powered by `argparse` with clear commands for encoding and decoding.
-*   **Robust Error Handling:** Provides informative error messages for common issues like incorrect passwords (InvalidTag), insufficient capacity, file not found, unsupported image modes, or corrupted data.
-*   **Cross-Platform:** Designed to run on Windows, macOS, and Linux.
+### Cryptography
+* **Argon2id** replaces PBKDF2 as the default password KDF (PBKDF2 still
+  selectable via `--kdf pbkdf2` at 600k iterations, and the legacy v1 format
+  is still readable for backwards compatibility).
+* **HKDF sub-keys** derive independent AES-GCM, ChaCha20-Poly1305,
+  position-shuffle seed and sentinel keys from one master key — so the slow
+  password KDF runs once per operation.
+* **AEAD with associated-data** binds the entire container header
+  (version/flags/KDF params/salts/nonces) to the ciphertext, so any tampering
+  invalidates the GCM tag.
+* **Dual-cipher mode** (`--dual-cipher`) layers ChaCha20-Poly1305 on top of
+  AES-256-GCM with independent keys — defence in depth against a catastrophic
+  break of either cipher.
+* **Keyfile 2FA** (`--keyfile PATH`) mixes an external binary into the KDF
+  input; password alone no longer suffices.
 
-## 🚀 Why StegX is Unique?
+### Compression
+* **Multi-algorithm compressor** (`--compression best`, default): every
+  payload is fed to zlib-9, LZMA2-extreme, bzip2-9, zstd-22, **zstd-22 with
+  a bundled pre-trained dictionary**, and brotli-11 in parallel; the smallest
+  output wins and is tagged in the metadata so the decoder knows what to
+  reverse. Typical savings on compressible data (text/JSON/code) are
+  **40-75% smaller than zlib alone**. The dictionary (~5 KiB, shipped at
+  `src/stegx/data/stegx_dict_v1.zstd`) was trained on a corpus of common
+  file-type headers (PE/ELF/PDF/ZIP/JSON/text/image) so it wins particularly
+  on small payloads under ~1 KiB where plain zstd pays its header overhead.
+  Random/encrypted payloads fall through to `none` (storing raw bytes).
+* **`--compression fast`** for latency-critical scenarios — zlib only, same
+  behaviour as pre-2.0.
 
-- 🔐 AES-256-GCM with integrity checks (InvalidTag-safe)
-- 📦 Compression-before-encryption (prevents file-type leaks)
-- 🔄 Non-linear, pseudo-random LSB embedding
-- ❌ No known forensic/steganography tools could extract hidden data
-- 🧪 Manually tested by ParrotSec core developer
-- 📜 Fully open-source, MIT licensed
+### Multi-file batch embed
+* `stegx encode -f a.zip b.txt c.pdf -o out.png` bundles multiple inputs
+  into an in-memory tar archive before compression and encryption. On
+  decode, the bundle flag in metadata triggers transparent extraction —
+  each member is written to the destination directory with its original
+  filename. Path traversal attempts (`../`, absolute paths, symlinks,
+  devices) are rejected during extraction.
+
+### Cover selection (`stegx pick-cover`)
+* `stegx pick-cover --dir ./covers --payload secret.zip` ranks every
+  image in a directory by capacity and Shannon entropy, and picks the
+  best fit for a given payload. Useful for choosing a cover that has
+  enough headroom AND enough texture to hide LSB modifications.
+
+### Steganography
+* **LSB matching (±1)** replaces LSB replacement by default — defeats the
+  asymmetry exploited by chi-square and RS analysis.
+* **Adaptive embedding** (`--adaptive`) filters pixel positions by
+  cost map. Two modes are available via `--adaptive-mode`:
+  - `laplacian` (default, fast) — keeps positions with the highest edge
+    response. Adequate for classical steganalysers.
+  - `hill` — HILL-inspired cost map (Li et al., ICIP 2014) with a KB
+    high-pass + double box-blur pipeline. Stronger against CNN-based
+    steganalysers (SRNet / YeNet) at a small extra compute cost.
+* **Matrix (F5) embedding** (`--matrix-embedding`) uses Hamming(7,3) coding
+  to cut the per-bit change rate by ~2.3×.
+* **Per-image HMAC sentinel** replaces the fixed `STEGX_EOD` marker, so the
+  sentinel varies with password and cover and can't be pattern-matched.
+* **Capacity ceiling** (`--max-fill PCT`, default 25%) rejects oversize
+  payloads that would be trivially detectable by CNN steganalysers.
+* **PNG metadata stripping** clears Pillow's `Software` fingerprint chunk;
+  the output's encoder parameters mirror the cover's (`compress_level`) so
+  file-size and chunk comparisons don't flag the stego.
+
+### Operational hardening
+* **`getpass` by default** for password entry, plus `--password-stdin` for
+  scripting. `-p` still works but warns loudly — it leaks into shell history
+  and `ps`.
+* **`zxcvbn` password-strength gate**: warn on score < 3; `--strict-password`
+  refuses weak passwords outright.
+* **Unified decode error message** — wrong password, wrong keyfile, and
+  non-StegX image all report the same text, removing an oracle.
+* **Constant-time sentinel compare** via `hmac.compare_digest`.
+* **OS-level memory locking** via ``mlock(2)`` on Linux / macOS and
+  ``VirtualLock`` on Windows for every master key and HKDF sub-key —
+  prevents secrets from being paged to swap / hibernation files. Falls
+  back to plain zeroisation if the OS rejects the lock (e.g. without
+  ``CAP_IPC_LOCK`` or sufficient working-set quota).
+* **Best-effort memory wipe** of master keys and derived sub-keys after use.
+* **`--fips` mode** restricts the pipeline to FIPS 140-validated
+  primitives: PBKDF2-HMAC-SHA256, AES-256-GCM, HKDF-SHA256 and zlib-only
+  compression. Refuses Argon2id, ChaCha20-Poly1305, brotli, lzma, bz2 and
+  zstd. Suitable for compliance-bound environments.
+* **Versioned container** (magic byte + version byte + flags) makes future
+  algorithm upgrades non-breaking.
+
+### Advanced features
+* **Plausible-deniability decoy** (`--decoy-file` / `--decoy-password`) —
+  the cover is split into two disjoint regions; either password unlocks only
+  its own region. Without both passwords, an observer cannot tell whether a
+  second region carries data.
+* **Paranoid cover split** (`--always-split-cover`) — always reserves the
+  decoy half and fills it with cryptographically random bits whenever no
+  real decoy is supplied. Equalises LSB modification density across both
+  halves so a statistical observer cannot distinguish "decoy in use" from
+  "no decoy" cases. Costs 50 % of cover capacity; opt-in only.
+* **k-of-n Shamir split** (`stegx shamir-split` / `stegx shamir-combine`) —
+  distribute a secret across n cover images; any k reconstruct it.
+
+## ⚠️ Breaking change from 1.x
+
+The v2 payload format is **not backwards-compatible** with stego images
+produced by StegX ≤ 1.2.1 (sentinel, seed derivation and container layout all
+changed). StegX 2.0 *can still read* v1 stego images transparently via a
+fallback path, but new stego images use v2. Re-encode anything important.
 
 ![Alt](https://repobeats.axiom.co/api/embed/f049be619581f2d339bb4a9f0ece66a41408f77c.svg "Repobeats analytics image")
 
@@ -51,95 +139,265 @@ StegX is a command-line tool written in Python for hiding files within images us
     git clone https://github.com/Delta-Sec/StegX
     cd stegx_project
     ```
-    Alternatively, just download the `stegx.py` script and the `stegx_core` directory.
+    Alternatively, install via pip-from-git: `pip install git+https://github.com/Delta-Sec/StegX`.
 
-3.  **Install Dependencies:**
-    Navigate to the project directory (`stegx_project`) in your terminal and run:
+3.  **Install the package:**
+    ```bash
+    pip install -e .            # editable install — creates a `stegx` binary
+    ```
+    Or, to run from a checkout without installing:
     ```bash
     pip install -r requirements.txt
+    python -m stegx --help
     ```
-    This will install the necessary libraries: `Pillow`, `cryptography`, and `tqdm`.
+    Optional extras: `pip install -e '.[compression,strength]'` adds
+    `zstandard`+`brotli` (multi-codec compression) and `zxcvbn`
+    (password-strength gate).
+
+4.  **Shell completions (optional):** [completions/](completions/)
+    contains ready-to-install bash / zsh / fish files. See
+    [completions/README.md](completions/README.md) for per-shell
+    installation paths.
+
+5.  **Docker (optional):** a multi-stage [Dockerfile](Dockerfile) ships
+    with the repo:
+    ```bash
+    docker build -t stegx:latest .
+    docker run --rm -it -v "$PWD:/work" stegx:latest --help
+    # Encode a local file using a bind-mount:
+    docker run --rm -i -v "$PWD:/work" stegx:latest \
+        encode -i /work/cover.png -f /work/secret.zip \
+               -o /work/out.png --password-stdin <<< "$PW"
+    ```
+    The image runs as a non-root user (`stegx`), installs all optional
+    extras (`[all]`), and exposes `stegx` as its `ENTRYPOINT`.
+
+## Continuous Integration
+
+GitHub Actions workflows are checked in under `.github/workflows/`:
+
+* [ci.yml](.github/workflows/ci.yml) runs on every push + PR:
+  - `pytest` matrix on Python 3.9 / 3.10 / 3.11 / 3.12 / 3.13 (Linux) +
+    a 3.12 Windows row.
+  - `docker build` + smoke test of `stegx --version` and
+    `stegx benchmark` inside the built image.
+  - `python -m build` + `twine check` producing an artefact for every
+    successful run.
+* [release.yml](.github/workflows/release.yml) fires on `v*.*.*` tags
+  (or manual dispatch):
+  - Builds + publishes the wheel and sdist to PyPI (expects a
+    `PYPI_API_TOKEN` repo secret — or switch to OIDC trusted
+    publishing; the workflow has commented guidance).
+  - Builds + pushes a multi-arch (`amd64` + `arm64`) Docker image to
+    `ghcr.io/<owner>/stegx` using the standard `GITHUB_TOKEN`.
 
 ## Usage
 
-StegX operates in two modes: `encode` (to hide a file) and `decode` (to extract a file).
+StegX provides four subcommands: `encode`, `decode`, `shamir-split`, `shamir-combine`.
 
-### Encoding (Hiding a File)
-
-```bash
-stegx encode -i <cover_image> -f <file_to_hide> -o <output_image.png> -p <password> [--no-compress] [--verbose]
-```
-
-**Arguments:**
-
-*   `-i, --image COVER_IMAGE`: (Required) Path to the input cover image (e.g., `photo.png`, `image.bmp`).
-*   `-f, --file FILE_TO_HIDE`: (Required) Path to the file you want to hide (e.g., `secret.txt`, `archive.zip`).
-*   `-o, --output OUTPUT_IMAGE`: (Required) Path where the output stego-image will be saved. **Using a `.png` extension is highly recommended** to ensure lossless saving.
-*   `-p, --password PASSWORD`: (Required) The password used for AES encryption. Remember this password, as it's needed for decoding.
-*   `--no-compress`: (Optional) Disable data compression. By default, StegX tries to compress the data if it reduces the size.
-*   `--verbose`: (Optional) Enable detailed debug logging output.
-
-**Example:**
+### Encoding (hiding a file)
 
 ```bash
-python stegx.py encode -i landscape.png -f my_document.pdf -o secret_image.png -p "MySecureP@ssw0rd!"
+stegx encode -i <cover> -f <file> -o <output.png> [options]
 ```
 
-### Decoding (Extracting a File)
+The password is read from a TTY prompt by default (`getpass`). To script, pipe
+it via `--password-stdin`. The legacy `-p` flag is still accepted but will warn.
+
+**Common options:**
+
+| Flag | Description |
+|------|-------------|
+| `-p, --password PW`        | Password (discouraged — leaks into shell history). |
+| `--password-stdin`         | Read password from a single line of stdin. |
+| `--keyfile PATH`           | Mix an external binary into the KDF as a second factor. |
+| `--yubikey`                | Require a YubiKey HMAC-SHA1 response (slot 2) as an additional hardware factor. Needs `pip install ykman`. |
+| `--panic-password PW`      | Arm self-destruct: entering this password at decode time wipes the real region's LSBs before reporting. Mutually exclusive with `--decoy-file`. |
+| `--panic-decoy PATH`       | Sacrificial payload returned after panic destruction (omit = silent mode). |
+| `--polyglot-zip PATH...`   | After the stego PNG is written, append a ZIP archive of the listed files so the output is simultaneously a valid PNG and a valid ZIP. Public side-channel only; does not affect the hidden StegX payload. |
+| `--kdf {argon2id,pbkdf2}`  | Password-based KDF (default: argon2id). |
+| `--dual-cipher`            | Layer ChaCha20-Poly1305 over AES-256-GCM. |
+| `--adaptive`               | Embed only in high-edge-cost regions (defeats CNN steganalysers). |
+| `--matrix-embedding`       | F5-style Hamming(7,3) matrix embedding for the ciphertext body. |
+| `--max-fill PCT`           | Refuse payloads filling more than PCT % of capacity (default 25%). |
+| `--strict-password`        | Reject passwords with zxcvbn score < 3 (default: warn). |
+| `--no-preserve-cover`      | Don't mirror the cover's PNG encoder parameters on save. |
+| `--no-compress`            | Disable compression of the payload. |
+| `--compression {fast,best}`| `fast` = zlib-9 only; `best` (default) tries zlib, LZMA, bzip2, zstd-22 (+ bundled-dictionary variant) and brotli-11, stores the smallest. |
+| `--always-split-cover`     | Paranoia mode: always reserve the decoy half and fill it with random bits even when no `--decoy-file` is set. Halves cover capacity; opt-in. |
+| `--fips`                   | Restrict to FIPS 140-validated primitives (PBKDF2 + AES-GCM + zlib). Rejects Argon2id / ChaCha / brotli / lzma / bz2 / zstd. |
+| `--decoy-file PATH`        | Hide a decoy payload alongside the real one (plausible deniability). |
+| `--decoy-password PW`      | Password for the decoy (prompted if omitted). |
+
+**Cover image from a URL:** the `-i`/`--image` argument accepts an
+`http(s)://…` URL. StegX downloads the bytes to a temp file (only
+`Content-Type: image/*` is accepted, 50 MiB cap, 30-second timeout), verifies
+the image with Pillow, uses it as the cover, and deletes the temp file on
+exit. Only image decoding — no scripting, no execution of any kind.
+
+**Examples:**
 
 ```bash
-stegx decode -i <stego_image.png> -d <output_directory> -p <password> [--verbose]
+# Interactive: prompts for password via getpass
+stegx encode -i landscape.png -f secret.pdf -o out.png
+
+# Cover pulled straight from a URL (Imgur, S3, etc.)
+stegx encode -i https://i.imgur.com/abc123.png -f secret.zip -o out.png
+
+# Hardened: dual cipher + adaptive + matrix embedding + keyfile
+stegx encode -i cover.png -f secret.bin -o out.png \
+    --dual-cipher --adaptive --matrix-embedding --keyfile token.bin
+
+# Plausible-deniability decoy
+stegx encode -i cover.png -f real.zip -o out.png \
+    --decoy-file harmless.txt
 ```
 
-**Arguments:**
-
-*   `-i, --image STEGO_IMAGE`: (Required) Path to the stego-image created by StegX (usually a `.png` file).
-*   `-d, --destination OUTPUT_DIR`: (Required) Path to the directory where the extracted file should be saved.
-*   `-p, --password PASSWORD`: (Required) The password used during the encoding process.
-*   `--verbose`: (Optional) Enable detailed debug logging output.
-
-**Example:**
+### Decoding (extracting a file)
 
 ```bash
-python stegx.py decode -i secret_image.png -d ./extracted_files -p "MySecureP@ssw0rd!"
+stegx decode -i <stego.png> (-d <output_dir> | --stdout | -d -) [--keyfile PATH]
 ```
 
-This will extract the original file (e.g., `my_document.pdf`) into the `extracted_files` directory (which will be created if it doesn't exist).
+The password is prompted interactively unless `-p`, `--password-stdin`, or
+`--keyfile` changes the auth inputs. All failure modes (wrong password, wrong
+keyfile, non-StegX image, corrupted data) report the **same** error message on
+purpose — to avoid leaking information to an attacker.
 
-## Technical Details
+**Output destinations:**
 
-1.  **Payload Creation:**
-    *   The file to hide is read.
-    *   Metadata (original filename, size, compression flag) is created.
-    *   Data is optionally compressed (zlib).
-    *   Payload = `[4-byte metadata length] + [JSON metadata] + [file data (compressed or original)]`.
-2.  **Encryption:**
-    *   A random 16-byte salt is generated.
-    *   A 32-byte AES key is derived from the password and salt using PBKDF2-HMAC-SHA256.
-    *   A random 12-byte nonce is generated.
-    *   The payload is encrypted using AES-256-GCM, which provides authenticated encryption (ciphertext + authentication tag).
-    *   Final Encrypted Data = `salt + nonce + ciphertext + tag`.
-3.  **LSB Embedding:**
-    *   The final encrypted data is converted into a stream of bits.
-    *   A unique sentinel (`STEGX_EOD` converted to bits) is appended to the bit stream.
-    *   The tool iterates through the image pixels (RGB or Grayscale).
-    *   For each pixel, it replaces the least significant bit(s) with bits from the data stream.
-        *   RGB/RGBA: Modifies the LSB of R, G, and B channels (3 bits per pixel).
-        *   Grayscale (L): Modifies the LSB of the single channel (1 bit per pixel).
-    *   The process stops once the entire bit stream (including the sentinel) is embedded.
-    *   The modified image is saved (losslessly as PNG).
-4.  **LSB Extraction:**
-    *   The tool reads the stego-image pixels.
-    *   It extracts the LSB from each color channel (or the single channel for grayscale).
-    *   It reconstructs the bit stream, constantly checking if the last N bits match the `STEGX_EOD` sentinel.
-    *   Once the sentinel is found, the preceding bits form the extracted encrypted data.
-5.  **Decryption & File Recovery:**
-    *   The salt and nonce are extracted from the beginning of the recovered encrypted data.
-    *   The AES key is re-derived using the password and the extracted salt.
-    *   AES-GCM decryption is performed. If the password is wrong or data is corrupt, this step fails with an `InvalidTag` error.
-    *   The decrypted payload is parsed: metadata length is read, JSON metadata is extracted, and the remaining data is identified.
-    *   If the metadata indicates compression, the data is decompressed.
-    *   The final data is saved to a file using the original filename from the metadata.
+* `-d <dir>`       — write the extracted file into `<dir>` (default behaviour).
+* `--stdout`       — write decrypted bytes to stdout (no filename preserved).
+  Use this to pipe directly into another program without touching disk.
+* `-d -`           — same as `--stdout`.
+
+**Examples:**
+
+```bash
+# Normal disk output
+stegx decode -i out.png -d ./extracted
+
+# Pipe decrypted bytes into another tool (e.g. SSH key into ssh-agent)
+stegx decode -i out.png --stdout --password-stdin <<< "$PW" | ssh-add -
+
+# Pipe into jq, openssl, etc.
+stegx decode -i out.png --stdout | jq .
+```
+
+### Benchmark your machine
+
+```bash
+stegx benchmark [--iterations N] [--size-kib K]
+stegx benchmark --calibrate [--target-ms 500]
+```
+
+Times Argon2id KDF runs and runs the compression multiplexer over a
+mixed-ASCII sample. `--calibrate` sweeps Argon2id memory sizes to find
+the one that lands closest to `--target-ms` on your CPU — useful before
+bumping the project-wide defaults in `src/stegx/kdf.py`.
+
+### Rotate a stego image's credentials
+
+```bash
+stegx rewrap -i stego.png [-o new.png]
+```
+
+Rotates the password / keyfile / YubiKey on an existing stego image
+**without ever materialising the plaintext on disk**. The old
+credentials decrypt the inner payload in memory, the old LSB positions
+are overwritten with cryptographic noise so they cannot be resurrected,
+and the payload is re-embedded with the new credentials. Useful when a
+password is suspected compromised or during scheduled key rotation.
+
+### Hash-chained audit log
+
+Every `encode` / `decode` / `rewrap` subcommand accepts `--audit-log PATH`.
+Each operation appends one JSONL record containing:
+
+* UTC timestamp
+* Operation name + ok/fail bit
+* SHA-256 of the cover and/or stego file
+* Names (never values) of the security-relevant flags used
+* A `prev` link to the previous record's `chain` hash + its own `chain`
+  hash over the canonical form of the record
+
+Tampering with any middle record breaks every subsequent `chain` hash;
+`stegx.audit_log.verify_chain(path)` walks the file and reports
+the first bad line. Payload content is never logged.
+
+### Shamir k-of-n split / combine
+
+Split a secret into `n` shares hidden across `n` cover images — any `k`
+reconstruct it.
+
+```bash
+# Split: 3-of-5 across 5 covers
+stegx shamir-split -k 3 -n 5 -f secret.bin \
+    -c c1.png c2.png c3.png c4.png c5.png -O shares/
+
+# Combine: any 3 shares recover the secret
+stegx shamir-combine -i shares/stego_share_01.png \
+    shares/stego_share_02.png shares/stego_share_03.png \
+    -d ./out -o recovered.bin
+```
+
+## Technical Details (v2)
+
+### Embedded byte-stream layout (inside pixel LSBs)
+
+```
+[16 B  sentinel ]   HMAC(sentinel_key, cover_fingerprint)[:16]
+[56 B  header   ]   magic | version | kdf_id | flags | kdf_params
+                    | salt(16) | aes_nonce(12) | chacha_nonce(12)
+                    | inner_ct_length(4)
+[N  B  ciphertext]  AEAD(AES-256-GCM, optionally chained with ChaCha20-Poly1305)
+```
+
+### Key hierarchy
+
+```
+position_key  = Argon2id(password ‖ keyfile?, FIXED_APP_SALT, default_params)
+                    ├─ HKDF("stegx/v2/pixel-shuffle-seed" ‖ fingerprint) → shuffle seed
+                    └─ HKDF("stegx/v2/sentinel"          ‖ fingerprint) → sentinel key
+
+master_key    = Argon2id(password ‖ keyfile?, random_salt_from_header, params_from_header)
+                    ├─ HKDF("stegx/v2/aes-256-gcm")        → AES key (32 B)
+                    └─ HKDF("stegx/v2/chacha20-poly1305")  → ChaCha key (optional)
+```
+
+Argon2id defaults: `time_cost=3`, `memory_cost=64 MiB`, `parallelism=4`.
+
+### Encryption
+
+1. Build inner payload: `[4-B metadata_len][JSON metadata][file data (optionally zlib-compressed)]`.
+2. Derive `master_key` (Argon2id); derive `aes_key` and optional `chacha_key` via HKDF.
+3. `aes_ct = AES-GCM(aes_key, aes_nonce, inner, aad=header_with_length_zeroed)`.
+4. If `--dual-cipher`: `final_ct = ChaCha20-Poly1305(chacha_key, chacha_nonce, aes_ct, aad=header)`.
+5. Final container: `header.pack() ‖ final_ct` (length field populated after step 3).
+
+### Embedding
+
+1. `position_key` → `seed_int` → shuffle every pixel-channel index.
+2. If `--adaptive`: drop positions outside the top Laplacian-edge percentile.
+3. If `--decoy-file`: partition all positions into two disjoint regions by a
+   cover-fingerprint-only deterministic shuffle; real payload uses one region,
+   decoy uses the other.
+4. LSB-matching (±1) on sentinel + header + ciphertext; matrix (F5 Hamming 7-3)
+   optionally on the ciphertext body only.
+5. Save as PNG with stripped metadata chunks and cover-matched `compress_level`.
+
+### Extraction
+
+1. Derive `position_key` → shuffled positions → read first 16 bytes; compare
+   against HMAC-derived sentinel (constant-time).
+2. On match, read 56-byte header, parse KDF params, derive `master_key`.
+3. Read `inner_ct_length` bytes of ciphertext, reverse dual-cipher if flagged,
+   decrypt with AES-GCM. AEAD tag verifies that the header was not tampered.
+4. Parse metadata, decompress if flagged, write to output directory with a
+   sanitised filename.
+
+Sentinel-then-AEAD-tag means **wrong password / wrong keyfile / non-StegX
+image** all fail with the same generic error — no oracle.
 
 ## 🛡️ Security & Steganalysis Resistance
 
@@ -169,4 +427,3 @@ StegX has been tested against multiple steganalysis tools and techniques. It was
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](https://github.com/Delta-Sec/StegX/blob/main/LICENSE) file for details.
-

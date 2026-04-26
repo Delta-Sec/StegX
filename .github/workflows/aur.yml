@@ -1,0 +1,60 @@
+name: aur
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag (e.g. v2.0.0) to publish to AUR"
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  publish-aur:
+    name: Publish to AUR
+    runs-on: ubuntu-latest
+    environment: aur
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ inputs.ref || github.ref_name }}
+
+      - name: Compute version + sha256 from GitHub tarball
+        id: meta
+        run: |
+          TAG="${{ inputs.ref || github.ref_name }}"
+          VERSION="${TAG#v}"
+          curl -fsSL -o "stegx-${VERSION}.tar.gz" \
+            "https://github.com/${{ github.repository }}/archive/refs/tags/${TAG}.tar.gz"
+          SHA="$(sha256sum "stegx-${VERSION}.tar.gz" | cut -d' ' -f1)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "sha256=${SHA}"     >> "$GITHUB_OUTPUT"
+
+      - name: Render PKGBUILD with concrete pkgver + sha256sums
+        run: |
+          mkdir -p _aur
+          cp packaging/aur/PKGBUILD _aur/PKGBUILD
+          sed -i "s/^pkgver=.*/pkgver=${{ steps.meta.outputs.version }}/" _aur/PKGBUILD
+          sed -i "s/^sha256sums=.*/sha256sums=('${{ steps.meta.outputs.sha256 }}')/" _aur/PKGBUILD
+
+      - name: Publish via aur-action
+        uses: KSXGitHub/github-actions-deploy-aur@v3.0.1
+        with:
+          pkgname: stegx
+          pkgbuild: _aur/PKGBUILD
+          commit_username: Delta-Sec
+          commit_email: ayhamasfoor1@gmail.com
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: "stegx ${{ steps.meta.outputs.version }}-1: upstream release"
+          allow_empty_commits: false
+          ssh_keyscan_types: rsa,ed25519

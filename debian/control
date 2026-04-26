@@ -1,0 +1,83 @@
+Source: stegx
+Section: utils
+Priority: optional
+Maintainer: Delta-Sec <ayhamasfoor1@gmail.com>
+Uploaders: Delta-Sec <ayhamasfoor1@gmail.com>
+Build-Depends:
+ debhelper-compat (= 13),
+ dh-sequence-python3,
+ pybuild-plugin-pyproject,
+ python3-all (>= 3.12),
+ python3-setuptools,
+ python3-pil (>= 10.3.0),
+ python3-cryptography (>= 44.0.1),
+ python3-tqdm (>= 4.60.0),
+ python3-argon2 (>= 23.1.0),
+ python3-pytest (>= 7.0),
+ python3-numpy <!nocheck>,
+Standards-Version: 4.7.0
+Rules-Requires-Root: no
+Homepage: https://github.com/Delta-Sec/StegX
+Vcs-Git: https://github.com/Delta-Sec/StegX.git
+Vcs-Browser: https://github.com/Delta-Sec/StegX
+X-Python3-Version: >= 3.12
+
+Package: stegx
+Architecture: all
+Multi-Arch: foreign
+Depends:
+ ${misc:Depends},
+ ${python3:Depends},
+ python3-pil (>= 10.3.0),
+ python3-cryptography (>= 44.0.1),
+ python3-tqdm (>= 4.60.0),
+ python3-argon2 (>= 23.1.0)
+Recommends:
+ python3-zxcvbn (>= 4.4.28),
+ python3-zstandard (>= 0.22.0),
+ python3-brotli (>= 1.1.0)
+Suggests:
+ python3-numpy (>= 1.20.0)
+Description: authenticated LSB steganography with Argon2id and AES-GCM
+ StegX hides files inside PNG images using password-shuffled LSB embedding
+ and authenticated encryption. Version 2 is a ground-up security rewrite
+ built around a versioned container format, Argon2id key derivation and
+ ChaCha20-Poly1305 dual-cipher layering on top of AES-256-GCM.
+ .
+ Cryptographic features:
+  * Argon2id password KDF (PBKDF2 retained as a versioned fallback)
+  * HKDF-SHA256 domain-separated sub-keys for AES-GCM, ChaCha20-Poly1305,
+    pixel-shuffle seed and the per-image HMAC sentinel key
+  * Optional --dual-cipher for AES-GCM + ChaCha20-Poly1305 defence in depth
+  * Optional --keyfile for two-factor (password + external keyfile)
+  * AEAD associated-data binding -- header tampering invalidates the tag
+  * v3 container format with variable-length KMS wrap slot (<= 512 B)
+    and per-operation YubiKey challenge nonce
+ .
+ Steganographic features:
+  * LSB matching (+/-1) by default -- defeats chi-square / RS analysis
+  * Optional adaptive cost map (Laplacian edges) to hide in textured regions
+  * Optional F5-style Hamming(7,3) matrix embedding
+  * Per-image HMAC-derived sentinel (no fixed fingerprint)
+  * PNG metadata stripping; cover encoder parameters preserved on save
+  * Plausible-deniability decoy payloads via --decoy-file
+  * k-of-n Shamir Secret Sharing across multiple covers
+  * Panic mode: silent destructive decode of a secondary region
+ .
+ Compression:
+  * Multi-algorithm compressor tries zlib, LZMA2, bzip2, zstd and brotli
+    in parallel and keeps the smallest output (40-75% smaller than
+    zlib-only on text / JSON / code)
+ .
+ Operational hardening:
+  * Passwords read via getpass by default; --password-stdin for scripting
+  * zxcvbn password-strength gate (--strict-password to enforce)
+  * Unified decode error message -- no oracle between wrong password,
+    wrong keyfile and non-StegX image
+  * Constant-time sentinel comparison
+  * Best-effort memory wipe of keys after use (secure_memory buffer)
+  * Centralised path sanitiser (NULL-byte, length, containment)
+  * Optional cover fetch from http(s) URLs with SSRF hardening
+    (private / loopback / link-local / CGNAT / cloud-IMDS blocklist,
+    DNS-rebinding-safe connect, redirect re-validation)
+  * In-memory decode to stdout (--stdout) for pipe-into-program workflows

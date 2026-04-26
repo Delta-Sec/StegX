@@ -1,0 +1,57 @@
+{% set name = "stegx-cli" %}
+{% set import_name = "stegx" %}
+{% set version = "2.0.0" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://files.pythonhosted.org/packages/source/{{ name[0] }}/{{ name }}/{{ name | replace('-', '_') }}-{{ version }}.tar.gz
+  sha256: REPLACE_WITH_SDIST_SHA256_AFTER_PYPI_RELEASE
+
+build:
+  number: 0
+  noarch: python
+  script: {{ PYTHON }} -m pip install . -vv --no-deps --no-build-isolation
+  entry_points:
+    - stegx = stegx.cli:main
+
+requirements:
+  host:
+    - python >=3.12
+    - pip
+    - setuptools >=64
+    - setuptools-scm >=8
+    - wheel
+  run:
+    - python >=3.12
+    - pillow >=10.3.0
+    - cryptography >=44.0.1,<46
+    - tqdm >=4.60.0
+    - argon2-cffi >=23.1.0
+
+test:
+  imports:
+    - {{ import_name }}
+  commands:
+    - pip check
+    - stegx --version
+
+about:
+  home: https://github.com/Delta-Sec/StegX
+  license: MIT
+  license_family: MIT
+  license_file: LICENSE
+  summary: Authenticated LSB steganography with Argon2id and AEAD
+  description: |
+    StegX hides files inside PNG images using password-shuffled LSB embedding
+    and authenticated encryption (AES-GCM / ChaCha20-Poly1305).  Supports
+    Argon2id, Shamir secret sharing, panic mode, YubiKey 2FA, and a versioned
+    container format with HKDF domain-separated sub-keys.
+  doc_url: https://delta-sec.github.io/StegX/
+  dev_url: https://github.com/Delta-Sec/StegX
+
+extra:
+  recipe-maintainers:
+    - DeltaSec

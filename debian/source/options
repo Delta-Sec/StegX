@@ -1,0 +1,14 @@
+tar-ignore = .git
+tar-ignore = .github
+tar-ignore = .claude
+tar-ignore = .pytest_cache
+tar-ignore = .mypy_cache
+tar-ignore = .ruff_cache
+tar-ignore = .vscode
+tar-ignore = __pycache__
+tar-ignore = *.egg-info
+tar-ignore = build
+tar-ignore = dist
+tar-ignore = wheels
+tar-ignore = snyk.exe
+compression = xz
