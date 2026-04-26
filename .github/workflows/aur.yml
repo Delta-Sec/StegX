@@ -57,7 +57,7 @@ jobs:
                 pacman -Sy --noconfirm --needed base-devel pacman-contrib >/dev/null
                 useradd -m builder
                 cp PKGBUILD /home/builder/PKGBUILD
-                chown -R builder:builder /home/builder
+                chown -R builder:builder /home/builder /work
                 sudo -u builder bash -c "cd /home/builder && makepkg --printsrcinfo > /work/.SRCINFO"
               '
           echo "----- .SRCINFO -----"

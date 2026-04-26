@@ -152,7 +152,7 @@ jobs:
       - name: Install Trivy CLI
         run: |
           curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh \
-            | sudo sh -s -- -b /usr/local/bin v0.65.0
+            | sudo sh -s -- -b /usr/local/bin
           trivy --version
 
       - name: Trivy — CRITICAL/HIGH gate

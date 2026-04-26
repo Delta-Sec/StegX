@@ -8,7 +8,7 @@ description: |
   challenge-response, and a versioned container format with HKDF
   domain-separated sub-keys.
 
-adopt-info: stegx
+version: '0.0.0'
 license: MIT
 source-code: https://github.com/Delta-Sec/StegX
 issues: https://github.com/Delta-Sec/StegX/issues
@@ -42,6 +42,3 @@ parts:
     stage-packages:
       - libffi8
       - libssl3
-    override-pull: |
-      craftctl default
-      craftctl set version="$(git -C "${CRAFT_PART_SRC}" describe --tags --always | sed 's/^v//')"

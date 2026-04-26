@@ -37,6 +37,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Inject release version into snapcraft.yaml
+        run: |
+          TAG="${{ github.ref_name }}"
+          VERSION="${TAG#v}"
+          echo "Rendering snap version: ${VERSION}"
+          sed -i "s/^version: .*/version: '${VERSION}'/" snap/snapcraft.yaml
+          grep -E '^version:' snap/snapcraft.yaml
+
       - name: Build snap
         id: build
         uses: snapcore/action-build@v1

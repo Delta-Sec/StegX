@@ -1,0 +1,42 @@
+fix: bump cryptography (CVE-2026-26007/34073/39892) and unblock snap/AUR/PyPI/Trivy
+
+Six upstream-side fixes rooted out from the v2.0.0 release run:
+
+- deps: `cryptography>=46.0.7,<47` in both `requirements/base.txt` and
+  the PEP 621 dependency list in `pyproject.toml`. `pip-audit` flagged
+  three known CVEs in 45.0.7 (CVE-2026-26007, CVE-2026-34073,
+  CVE-2026-39892), all patched no later than 46.0.7.
+
+- snap/snapcraft.yaml: replace `adopt-info: stegx` + the
+  `override-pull` git-describe scriptlet with a static `version:`
+  placeholder. The LXD managed instance has no `git` and the source is
+  not a git checkout (`source-type: local`), so the scriptlet failed
+  with `git: command not found` and snapcraft validation rejected the
+  empty version string.
+
+- snap.yml: inject the real `${GITHUB_REF_NAME}` into
+  `snap/snapcraft.yaml` via `sed` immediately before
+  `snapcore/action-build@v1` runs, so the resulting snap carries the
+  correct tag version.
+
+- ci.yml: drop the `v0.65.0` pin from the Trivy `install.sh`
+  invocation. The pinned release binary has been pruned from GitHub
+  Releases and the script exited 1 even though it resolved the tag.
+  Let the installer pick the latest stable Trivy.
+
+- aur.yml: in the Arch Linux `.SRCINFO` generator container, extend
+  the `chown -R builder:builder` to cover the bind-mounted `/work`
+  volume. Otherwise `sudo -u builder makepkg --printsrcinfo > /work/.SRCINFO`
+  failed with `/work/.SRCINFO: Permission denied` because the mount
+  inherited the host runner's uid.
+
+- release.yml (PyPI job): add `verbose: true` so the next `400 Bad
+  Request` from the PyPI legacy API includes the actual rejection
+  reason (most likely a missing PyPI Trusted Publisher configuration
+  for the `stegx-cli` project). Also set `skip-existing: true` so
+  partial re-uploads are idempotent.
+
+Docker Hub push continues to fail with `401 Unauthorized: access token
+has insufficient scopes`. That is a repository-settings issue (the
+`DOCKERHUB_TOKEN` secret needs Read/Write/Delete scopes), not a code
+issue; no workflow change applied.
