@@ -67,25 +67,50 @@ jobs:
       - name: Mark workspace safe for git (container runs as root)
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: Resolve version from git tag for setuptools-scm
+        id: version
+        run: |
+          set -e
+          # dpkg-source strips .git, so setuptools-scm cannot detect the tag
+          # during the Debian build. Pre-compute the version from the ref
+          # (or git describe for non-tag pushes) and pass it through env.
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+              VERSION="${GITHUB_REF_NAME#v}"
+          else
+              VERSION="$(git describe --tags --always --dirty 2>/dev/null | sed 's/^v//' || echo 0.0.0)"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Resolved version: ${VERSION}"
+
       - name: Build binary .deb (skip upstream tests during dh build)
         env:
           DEB_BUILD_OPTIONS: nocheck
+          SETUPTOOLS_SCM_PRETEND_VERSION: ${{ steps.version.outputs.version }}
+          SETUPTOOLS_SCM_PRETEND_VERSION_FOR_STEGX_CLI: ${{ steps.version.outputs.version }}
         run: |
           dpkg-buildpackage -us -uc -b
+
+      - name: Stage produced artefacts inside the workspace
+        run: |
+          set -e
+          mkdir -p deb-out
+          cp ../stegx_*_all.deb     deb-out/
+          cp ../stegx_*.buildinfo   deb-out/ 2>/dev/null || true
+          cp ../stegx_*.changes     deb-out/ 2>/dev/null || true
+          ls -la deb-out/
 
       - name: Run lintian on the produced .deb
         run: |
           set -e
-          DEB=$(ls ../stegx_*_all.deb | head -n 1)
+          DEB=$(ls deb-out/stegx_*_all.deb | head -n 1)
           echo "Produced: ${DEB}"
           lintian --pedantic --info "${DEB}" || true
-
           lintian --fail-on=error "${DEB}"
 
       - name: Smoke-test installed package
         run: |
           set -e
-          DEB=$(ls ../stegx_*_all.deb | head -n 1)
+          DEB=$(ls deb-out/stegx_*_all.deb | head -n 1)
           apt-get install -y "${DEB}"
           stegx --version
           python3 -c "import stegx; print('imported stegx', stegx.__version__)"
@@ -95,8 +120,8 @@ jobs:
         with:
           name: stegx-deb-${{ matrix.name }}
           path: |
-            ../stegx_*_all.deb
-            ../stegx_*.buildinfo
-            ../stegx_*.changes
+            deb-out/stegx_*_all.deb
+            deb-out/stegx_*.buildinfo
+            deb-out/stegx_*.changes
           if-no-files-found: error
           retention-days: 14
