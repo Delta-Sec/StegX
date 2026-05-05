@@ -416,8 +416,6 @@ StegX has been tested against multiple steganalysis tools and techniques. It was
 | Entropy Test     | ✅ 7.99 bits/byte (high randomness) |
 | Histogram Check  | ✅ High similarity with original |
 
-📎 See detailed comparison in [`Why StegX is Better than steghide.pdf`](./Docs/Why%20Stegx%20Better%20than%20steghide.pdf)
-
 ## Troubleshooting / Common Issues
 
 *   **Error: Insufficient image capacity:** The file (after potential compression and encryption overhead) is too large to fit in the LSBs of the chosen cover image. Try a larger image, ensure the cover image is PNG/BMP, or hide a smaller file.

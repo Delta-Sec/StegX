@@ -55,9 +55,9 @@ classifiers = [
 ]
 dependencies = [
 
-    "Pillow>=12.2.0",
+    "Pillow>=10.3.0",
 
-    "cryptography>=46.0.7,<47",
+    "cryptography>=43.0.0",
     "tqdm>=4.60.0",
     "argon2-cffi>=23.1.0",
 ]
@@ -123,6 +123,7 @@ stegx = ["py.typed", "data/*.zstd"]
 write_to = "src/stegx/_version.py"
 fallback_version = "2.0.0"
 local_scheme = "no-local-version"
+git_describe_command = 'git describe --dirty --tags --long --match "v*"'
 
 [tool.pytest.ini_options]
 minversion = "7.0"
