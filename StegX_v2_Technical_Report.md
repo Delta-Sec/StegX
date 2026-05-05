@@ -1,8 +1,7 @@
 # 🛡️ StegX v2.0 Technical Evaluation & Benchmark Report
 
-```{important}
-**Testing Environment:** All benchmarks, cryptographic stress tests, and statistical steganography analyses detailed in this report were conducted on an isolated Kali Linux test server (`x86_64`) utilizing industry-standard forensic tools including `stegseek`, `zsteg`, and custom Chi-Square/Entropy Python implementations.
-```
+> [!IMPORTANT]  
+> **Testing Environment:** All benchmarks, cryptographic stress tests, and statistical steganography analyses detailed in this report were conducted on an isolated Kali Linux test server (`x86_64`) utilizing industry-standard forensic tools including `stegseek`, `zsteg`, and custom Chi-Square/Entropy Python implementations.
 
 ---
 
@@ -28,9 +27,8 @@ StegX v2.0 eradicates this vulnerability by utilizing **Argon2id** (the winner o
 | Run 3 | `112.1 ms` | Consistent memory allocation |
 | **Mean** | **`112.1 ms`** | **Optimal UX / Maximum GPU Resistance** |
 
-```{tip}
-**Numerical Advantage:** While `stegseek` can test up to **20,000,000+** passwords per second against Steghide, StegX restricts attackers to roughly **9 attempts per second** per thread due to the `112ms` cryptographic delay and memory cost (`memory_cost_kib`), mathematically neutralizing brute-force dictionary attacks.
-```
+> [!TIP]  
+> **Numerical Advantage:** While `stegseek` can test up to **20,000,000+** passwords per second against Steghide, StegX restricts attackers to roughly **9 attempts per second** per thread due to the `112ms` cryptographic delay and memory cost (`memory_cost_kib`), mathematically neutralizing brute-force dictionary attacks.
 
 ---
 
@@ -63,10 +61,9 @@ We embedded a highly compressed payload into `cover.png` (Lenna test image) usin
 | **StegX (Extreme Mode)** | `1187.78` | `7.7502 bits/byte` | **Undetectable** |
 | **Steghide (Simulation)** | `> 45,000.0` | `7.9900 bits/byte` | Highly Suspicious (PoV Anomaly) |
 
-```{important}
-**Why did StegX's Chi-Square drop?** 
-Standard LSB modification forces pixel values into artificial pairs. Because StegX alters fewer than 14% of the selected pixels (thanks to Matrix Embedding) and restricts changes strictly to chaotic, high-texture edge regions (via Laplacian filtering), the modifications are mathematically indistinguishable from natural camera noise.
-```
+> [!IMPORTANT]  
+> **Why did StegX's Chi-Square drop?** 
+> Standard LSB modification forces pixel values into artificial pairs. Because StegX alters fewer than 14% of the selected pixels (thanks to Matrix Embedding) and restricts changes strictly to chaotic, high-texture edge regions (via Laplacian filtering), the modifications are mathematically indistinguishable from natural camera noise.
 
 ---
 
@@ -110,10 +107,7 @@ Unlike legacy tools abandoned decades ago, StegX v2.0 is actively maintained aga
 | **Compression** | **Multiplexed** (Zstd, Brotli, LZMA, etc.) | Basic Zlib |
 | **Self-Destruction** | **Panic Mode** (Wipes LSBs on demand) | Not Supported |
 
-### 🏁 Final
-
-```{warning}
-**Steghide** is a legacy artifact; its reliance on archaic cryptographic primitives and dense LSB substitution makes it trivial to detect and crack using modern computing power.
-```
+### 🏁 Final Conclusion
+**Steghide** is a legacy artifact; its reliance on archaic cryptographic primitives and dense LSB substitution makes it trivial to detect and crack using modern computing power. 
 
 **StegX v2.0** completely revitalizes the field of steganography. By neutralizing automated steganalysis through matrix-driven adaptive edge-embedding, and immunizing itself against GPU brute-forcing via Argon2id, StegX stands as a mathematically formidable, enterprise-grade concealment platform suitable for high-stakes operational security.

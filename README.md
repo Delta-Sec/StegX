@@ -1,6 +1,6 @@
 ![Stegx_Github](https://github.com/user-attachments/assets/f569fc67-7c0a-47ca-833e-d088ab1cb243)
 
-# StegX 2.0: Authenticated LSB Steganography with Argon2id + AES-GCM
+# StegX 2.0: Authenticated Non-Linear LSB Steganography with Argon2id + AES-GCM
 
 [![Python Version](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -17,6 +17,9 @@ HKDF sub-keys, LSB-matching (±1) embedding that defeats chi-square steganalysis
 and — optionally — ChaCha20-Poly1305 dual-cipher, F5-style matrix embedding,
 adaptive cost-map filtering, keyfile 2FA, plausible-deniability decoy payloads,
 and k-of-n Shamir secret sharing across multiple cover images.
+
+> **Technical Evaluation Report 📊**  
+> For a complete, in-depth evaluation of StegX v2.0's cryptographic strength, statistical invisibility (Chi-Square/Entropy metrics), and a head-to-head performance comparison against legacy tools like **Steghide**, please read our comprehensive **[StegX v2.0 Technical Evaluation & Benchmark Report](./StegX_v2_Technical_Report.md)**.
 
 ## What's New in 2.0
 

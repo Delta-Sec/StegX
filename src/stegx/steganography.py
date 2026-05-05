@@ -324,6 +324,7 @@ def _embed_stream(
     embed_bytes: bytes,
     method_ct: str,
     fingerprint_tag: bytes,
+    is_adaptive: bool = False,
 ) -> None:
     rng = random.Random(int.from_bytes(fingerprint_tag[:8], "big") ^ 0xA5A5A5A5)
 
@@ -335,7 +336,7 @@ def _embed_stream(
     body_bits = bytes_to_bits(body_bytes_data)
 
 
-    head_method = LSB_REPLACEMENT if method_ct == LSB_REPLACEMENT else LSB_MATCHING
+    head_method = LSB_REPLACEMENT if (method_ct == LSB_REPLACEMENT or is_adaptive) else LSB_MATCHING
 
     embed_bits(
         pixels=pixels,
@@ -353,6 +354,7 @@ def _embed_stream(
             bits=body_bits,
             method=method_ct,
             rng=rng,
+            use_replacement_for_matrix=is_adaptive,
         )
 
 def _split_head_body(
@@ -456,6 +458,7 @@ def embed_v2(
             embed_bytes=real_embed_bytes,
             method_ct=_determine_method(options),
             fingerprint_tag=fingerprint,
+            is_adaptive=options.use_adaptive,
         )
 
         if has_decoy:
@@ -588,6 +591,7 @@ def _embed_panic(
         embed_bytes=panic_bytes,
         method_ct=LSB_MATCHING,
         fingerprint_tag=fingerprint + b"panic",
+        is_adaptive=options.use_adaptive,
     )
     logging.debug("Panic payload embedded (mode=%s, size=%d B).", mode, len(sacrificial))
 
@@ -646,6 +650,7 @@ def _embed_decoy(
         embed_bytes=decoy_bytes,
         method_ct=LSB_MATCHING,
         fingerprint_tag=fingerprint + b"decoy",
+        is_adaptive=options.use_adaptive,
     )
 
 

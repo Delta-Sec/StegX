@@ -54,10 +54,11 @@ def embed_bits(
     bits: str,
     method: str,
     rng: random.Random,
+    use_replacement_for_matrix: bool = False,
 ) -> int:
     is_gray = mode == "L"
     if method == MATRIX_HAMMING:
-        return _embed_matrix_hamming(pixels, positions, bits, is_gray, rng, k=3)
+        return _embed_matrix_hamming(pixels, positions, bits, is_gray, rng, k=3, use_replacement=use_replacement_for_matrix)
 
     count = 0
     for ch in bits:
@@ -107,6 +108,7 @@ def _embed_matrix_hamming(
     is_gray: bool,
     rng: random.Random,
     k: int,
+    use_replacement: bool = False,
 ) -> int:
     block_cover = (1 << k) - 1
     pos_idx = 0
@@ -130,7 +132,11 @@ def _embed_matrix_hamming(
         flip_pos = syndrome ^ message_int
         if flip_pos != 0:
             x, y, c = block_positions[flip_pos - 1]
-            _adjust_pm1(pixels, x, y, c, is_gray, rng)
+            if use_replacement:
+                curr = _get_lsb(pixels, x, y, c, is_gray)
+                _set_lsb_replacement(pixels, x, y, c, is_gray, 1 - curr)
+            else:
+                _adjust_pm1(pixels, x, y, c, is_gray, rng)
 
         pos_idx += block_cover
         bit_idx += k

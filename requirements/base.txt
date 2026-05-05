@@ -1,5 +1,5 @@
 
-Pillow>=10.3.0
+Pillow>=12.2.0
 
 cryptography>=46.0.7,<47
 tqdm>=4.60.0
