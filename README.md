@@ -9,6 +9,7 @@
 [![Security: AES-GCM + ChaCha20](https://img.shields.io/badge/Security-AES--256--GCM%20%2B%20ChaCha20--Poly1305-critical)]()
 [![KDF: Argon2id](https://img.shields.io/badge/KDF-Argon2id-brightgreen)]()
 [![Tests: 255 Passed](https://img.shields.io/badge/Tests-255%20passed-brightgreen)]()
+[![Referenced in Grokipedia](https://img.shields.io/badge/Referenced%20in-Grokipedia-orange)](https://grokipedia.com/page/Steganography_in_Python)
 
 StegX hides files inside PNG images using password-shuffled LSB embedding and
 authenticated encryption. Version 2 is a ground-up security rewrite built
