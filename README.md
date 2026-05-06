@@ -129,8 +129,6 @@ produced by StegX ≤ 1.2.1 (sentinel, seed derivation and container layout all
 changed). StegX 2.0 *can still read* v1 stego images transparently via a
 fallback path, but new stego images use v2. Re-encode anything important.
 
-![Alt](https://repobeats.axiom.co/api/embed/f049be619581f2d339bb4a9f0ece66a41408f77c.svg "Repobeats analytics image")
-
 ## Installation
 
 1.  **Prerequisites:**
@@ -411,10 +409,6 @@ StegX has been tested against multiple steganalysis tools and techniques. It was
 | Stegseek         | ❌ Failed to extract |
 | zsteg            | ❌ No patterns found |
 | binwalk          | ✅ Clean output |
-| exiftool         | ✅ Metadata clean |
-| Chi-Square Test  | ✅ Low anomaly (13K vs 119K in Steghide) |
-| Entropy Test     | ✅ 7.99 bits/byte (high randomness) |
-| Histogram Check  | ✅ High similarity with original |
 
 ## Troubleshooting / Common Issues
 

@@ -90,10 +90,10 @@ jobs:
           git clone ssh://aur@aur.archlinux.org/stegx.git aur-repo
           cp _aur/PKGBUILD _aur/.SRCINFO aur-repo/
           cd aur-repo
-          if git diff --quiet --exit-code; then
+          git add PKGBUILD .SRCINFO
+          if git diff --staged --quiet --exit-code; then
               echo "No PKGBUILD/.SRCINFO changes — skipping AUR push."
               exit 0
           fi
-          git add PKGBUILD .SRCINFO
           git commit -m "stegx ${VERSION}-1: upstream release"
           git push origin master
