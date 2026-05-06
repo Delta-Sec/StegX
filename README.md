@@ -131,47 +131,51 @@ fallback path, but new stego images use v2. Re-encode anything important.
 
 ## Installation
 
-1.  **Prerequisites:**
-    *   Python 3.8 or higher.
-    *   `pip` (Python package installer).
+StegX 2.0 can be installed across multiple platforms using your preferred package manager.
 
-2.  **Clone the Repository (Optional):**
-    ```bash
-    git clone https://github.com/Delta-Sec/StegX
-    cd stegx_project
-    ```
-    Alternatively, install via pip-from-git: `pip install git+https://github.com/Delta-Sec/StegX`.
+### 📦 PyPI (Python Package)
+The recommended way for most users. Requires Python 3.8+.
+```bash
+pip install stegx-cli
+```
+*Optional:* To install with compression algorithms and password strength evaluation:
+```bash
+pip install stegx-cli[compression,strength]
+```
 
-3.  **Install the package:**
-    ```bash
-    pip install -e .            # editable install — creates a `stegx` binary
-    ```
-    Or, to run from a checkout without installing:
-    ```bash
-    pip install -r requirements.txt
-    python -m stegx --help
-    ```
-    Optional extras: `pip install -e '.[compression,strength]'` adds
-    `zstandard`+`brotli` (multi-codec compression) and `zxcvbn`
-    (password-strength gate).
+### 🐧 Arch Linux (AUR)
+If you are on Arch Linux or Manjaro, you can install the native package from the Arch User Repository:
+```bash
+yay -S stegx
+```
 
-4.  **Shell completions (optional):** [completions/](completions/)
-    contains ready-to-install bash / zsh / fish files. See
-    [completions/README.md](completions/README.md) for per-shell
-    installation paths.
+### 🐳 Docker
+A pre-built, multi-architecture Docker image is available on Docker Hub and GitHub Container Registry.
+```bash
+docker pull ayhamasfoor/stegx:latest
+```
+**Usage Example:**
+```bash
+docker run --rm -i -v "$PWD:/work" ayhamasfoor/stegx \
+    encode -i /work/cover.png -f /work/secret.zip \
+           -o /work/out.png --password-stdin <<< "YourStrongPassword"
+```
 
-5.  **Docker (optional):** a multi-stage [Dockerfile](Dockerfile) ships
-    with the repo:
-    ```bash
-    docker build -t stegx:latest .
-    docker run --rm -it -v "$PWD:/work" stegx:latest --help
-    # Encode a local file using a bind-mount:
-    docker run --rm -i -v "$PWD:/work" stegx:latest \
-        encode -i /work/cover.png -f /work/secret.zip \
-               -o /work/out.png --password-stdin <<< "$PW"
-    ```
-    The image runs as a non-root user (`stegx`), installs all optional
-    extras (`[all]`), and exposes `stegx` as its `ENTRYPOINT`.
+### 🛍️ Snap (Ubuntu & Linux)
+Install securely via the Snap Store on any supported Linux distribution:
+```bash
+sudo snap install stegx
+```
+
+### 🛠️ Build from Source
+If you prefer to run it directly from the source code:
+```bash
+git clone https://github.com/Delta-Sec/StegX
+cd StegX
+pip install -e .
+```
+
+*Note: Shell completions are available in the `completions/` directory.*
 
 ## Continuous Integration
 
