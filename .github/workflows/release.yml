@@ -215,3 +215,12 @@ jobs:
           cache-to: type=gha,mode=max
           provenance: true
           sbom: true
+
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        if: ${{ env.DOCKERHUB_USERNAME != '' && (github.event_name == 'push' || !inputs.dry_run) }}
+        with:
+          username: ${{ vars.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ vars.DOCKERHUB_USERNAME }}/stegx
+          readme-filepath: ./README.md
