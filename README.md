@@ -22,6 +22,16 @@ and k-of-n Shamir secret sharing across multiple cover images.
 > **Technical Evaluation Report 📊**  
 > For a complete, in-depth evaluation of StegX v2.0's cryptographic strength, statistical invisibility (Chi-Square/Entropy metrics), and a head-to-head performance comparison against legacy tools like **Steghide**, please read our comprehensive **[StegX v2.0 Technical Evaluation & Benchmark Report](./StegX_v2_Technical_Report.md)**.
 
+> **Steganalysis Resistance 🛡️**  
+> StegX v2.0 was tested against **10 detection methods** across **4 embedding modes** — all returned **UNDETECTED**. Full methodology and results: **[Test Cases & Validation Wiki](../../wiki/Test-Cases-and-Validation#5-advanced-steganalysis-resistance-statistical--ml--cnn)**.
+>
+> | Category | Methods | Result |
+> |----------|---------|--------|
+> | Classical Attacks | Chi-Square (p=1.0), RS Analysis, Sample Pair, Entropy | ✅ UNDETECTED |
+> | Image Quality | PSNR (72-74 dB), SSIM (0.999998), KL Divergence (10⁻⁶) | ✅ IMPERCEPTIBLE |
+> | Machine Learning | Random Forest + Gradient Boosting (SRM features, GroupKFold) | ✅ ~50% accuracy (random) |
+> | Deep Learning | SRNet CNN — 11.5M params, 60 epochs, Tesla T4 GPU | ✅ 50.0% accuracy, AUC 0.498 |
+
 ## What's New in 2.0
 
 ### Cryptography
