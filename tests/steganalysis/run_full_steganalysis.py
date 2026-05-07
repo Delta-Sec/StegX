@@ -36,7 +36,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from scipy import stats as scipy_stats
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.metrics import accuracy_score, roc_auc_score, classification_report
-from sklearn.model_selection import cross_val_score, StratifiedKFold
+from sklearn.model_selection import cross_val_score, GroupKFold
 
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -354,56 +354,50 @@ def run_ml_classifier(cover_paths: List[Path], stego_paths: List[Path]) -> Dict:
     print(f"  Extracting SRM features from {n} cover + {n} stego images...")
     X = []
     y = []
+    groups = []
 
-    for p in cover_paths[:n]:
+    for idx, p in enumerate(cover_paths[:n]):
         img = load_image_array(p)
         feat = extract_srm_features(img)
         X.append(feat)
         y.append(0)
+        groups.append(idx)
 
-    for p in stego_paths[:n]:
+    for idx, p in enumerate(stego_paths[:n]):
         img = load_image_array(p)
         feat = extract_srm_features(img)
         X.append(feat)
         y.append(1)
+        groups.append(idx)
 
     X = np.array(X)
     y = np.array(y)
+    groups = np.array(groups)
 
     nan_mask = np.isnan(X) | np.isinf(X)
     X[nan_mask] = 0.0
 
     n_splits = min(5, n)
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
+    cv = GroupKFold(n_splits=n_splits)
 
     rf = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42, n_jobs=-1)
-    rf_scores = cross_val_score(rf, X, y, cv=cv, scoring="accuracy")
+    rf_scores = cross_val_score(rf, X, y, cv=cv, groups=groups, scoring="accuracy")
 
     gb = GradientBoostingClassifier(n_estimators=100, max_depth=5, random_state=42)
-    gb_scores = cross_val_score(gb, X, y, cv=cv, scoring="accuracy")
+    gb_scores = cross_val_score(gb, X, y, cv=cv, groups=groups, scoring="accuracy")
 
-    rf.fit(X, y)
-    rf_probs = rf.predict_proba(X)[:, 1]
-    try:
-        rf_auc = roc_auc_score(y, rf_probs)
-    except ValueError:
-        rf_auc = 0.5
-
-    gb.fit(X, y)
-    gb_probs = gb.predict_proba(X)[:, 1]
-    try:
-        gb_auc = roc_auc_score(y, gb_probs)
-    except ValueError:
-        gb_auc = 0.5
-
-    importances = rf.feature_importances_
-    top_features = np.argsort(importances)[-5:][::-1]
+    importances_list = []
+    for train_idx, test_idx in cv.split(X, y, groups):
+        rf_fold = RandomForestClassifier(n_estimators=200, max_depth=10, random_state=42, n_jobs=-1)
+        rf_fold.fit(X[train_idx], y[train_idx])
+        importances_list.append(rf_fold.feature_importances_)
+    avg_importances = np.mean(importances_list, axis=0)
+    top_features = np.argsort(avg_importances)[-5:][::-1]
 
     return {
         "random_forest_cv_accuracy": f"{rf_scores.mean():.4f} +/- {rf_scores.std():.4f}",
         "gradient_boosting_cv_accuracy": f"{gb_scores.mean():.4f} +/- {gb_scores.std():.4f}",
-        "random_forest_auc_roc": f"{rf_auc:.4f}",
-        "gradient_boosting_auc_roc": f"{gb_auc:.4f}",
+        "cross_validation": f"{n_splits}-Fold GroupKFold (no leakage)",
         "top_discriminative_features": top_features.tolist(),
         "verdict": "UNDETECTED" if rf_scores.mean() < 0.60 else "BORDERLINE" if rf_scores.mean() < 0.75 else "DETECTED",
     }

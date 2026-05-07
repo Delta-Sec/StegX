@@ -234,65 +234,92 @@ print("SRNet model defined successfully")
 print(f"Parameters: {sum(p.numel() for p in SRNet().parameters()):,}")
 
 # %% [markdown]
-# ## 3. Dataset & DataLoader
+# ## 3. Dataset & DataLoader (Image-Level Split — No Leakage)
+#
+# Cover/stego pairs from the same source image are always kept in the
+# same split. This prevents the model from memorizing image-specific
+# features instead of learning steganographic artifacts.
 
 # %%
-from torch.utils.data import Dataset, DataLoader, random_split
+from torch.utils.data import Dataset, DataLoader, Subset
 from torchvision import transforms
 
 
 class StegoDataset(Dataset):
     def __init__(self, cover_dir, stego_dir, transform=None):
         self.transform = transform
+        self.pairs = []
         self.samples = []
-        
+
         cover_files = sorted(Path(cover_dir).glob("*.png"))
         stego_files = sorted(Path(stego_dir).glob("*.png"))
-        
         stego_names = {f.name for f in stego_files}
-        
+
+        pair_idx = 0
         for cf in cover_files:
             if cf.name in stego_names:
-                self.samples.append((str(cf), 0))
-                self.samples.append((str(stego_dir / cf.name), 1))
+                self.samples.append((str(cf), 0, pair_idx))
+                self.samples.append((str(stego_dir / cf.name), 1, pair_idx))
+                self.pairs.append(pair_idx)
+                pair_idx += 1
 
     def __len__(self):
         return len(self.samples)
 
     def __getitem__(self, idx):
-        path, label = self.samples[idx]
+        path, label, _ = self.samples[idx]
         img = Image.open(path).convert("RGB")
         if self.transform:
             img = self.transform(img)
         return img, label
 
 
-transform = transforms.Compose([
+transform_train = transforms.Compose([
     transforms.RandomCrop(256, pad_if_needed=True),
     transforms.RandomHorizontalFlip(),
     transforms.RandomVerticalFlip(),
     transforms.ToTensor(),
 ])
 
-dataset = StegoDataset(COVER_DIR, STEGO_DIR, transform=transform)
-n_total = len(dataset)
-print(f"Total samples: {n_total}")
-assert n_total >= 40, f"Need at least 40 samples (20 pairs), got {n_total}"
+transform_test = transforms.Compose([
+    transforms.CenterCrop(256),
+    transforms.ToTensor(),
+])
 
-n_train = int(0.7 * n_total)
-n_val = int(0.15 * n_total)
-n_test = n_total - n_train - n_val
+dataset = StegoDataset(COVER_DIR, STEGO_DIR, transform=transform_train)
+n_pairs = len(dataset.pairs)
+print(f"Total paired images: {n_pairs} pairs ({n_pairs*2} samples)")
+assert n_pairs >= 20, f"Need at least 20 pairs, got {n_pairs}"
 
-train_set, val_set, test_set = random_split(
-    dataset, [n_train, n_val, n_test],
-    generator=torch.Generator().manual_seed(42)
-)
+rng_split = np.random.RandomState(42)
+pair_indices = rng_split.permutation(n_pairs)
+n_train_pairs = int(0.7 * n_pairs)
+n_val_pairs = int(0.15 * n_pairs)
 
-train_loader = DataLoader(train_set, batch_size=16, shuffle=True, num_workers=2, pin_memory=True)
-val_loader = DataLoader(val_set, batch_size=16, shuffle=False, num_workers=2, pin_memory=True)
-test_loader = DataLoader(test_set, batch_size=16, shuffle=False, num_workers=2, pin_memory=True)
+train_pair_set = set(pair_indices[:n_train_pairs])
+val_pair_set = set(pair_indices[n_train_pairs:n_train_pairs + n_val_pairs])
+test_pair_set = set(pair_indices[n_train_pairs + n_val_pairs:])
 
-print(f"Dataset: {n_total} total ({n_train} train, {n_val} val, {n_test} test)")
+train_indices = [i for i, (_, _, pid) in enumerate(dataset.samples) if pid in train_pair_set]
+val_indices = [i for i, (_, _, pid) in enumerate(dataset.samples) if pid in val_pair_set]
+test_indices = [i for i, (_, _, pid) in enumerate(dataset.samples) if pid in test_pair_set]
+
+train_set = Subset(dataset, train_indices)
+val_set = Subset(dataset, val_indices)
+
+test_dataset = StegoDataset(COVER_DIR, STEGO_DIR, transform=transform_test)
+test_set = Subset(test_dataset, test_indices)
+
+use_pin = torch.cuda.is_available()
+train_loader = DataLoader(train_set, batch_size=16, shuffle=True, num_workers=2, pin_memory=use_pin)
+val_loader = DataLoader(val_set, batch_size=16, shuffle=False, num_workers=2, pin_memory=use_pin)
+test_loader = DataLoader(test_set, batch_size=16, shuffle=False, num_workers=2, pin_memory=use_pin)
+
+print(f"Split (image-level, NO leakage):")
+print(f"  Train: {len(train_indices)} samples ({len(train_pair_set)} pairs)")
+print(f"  Val:   {len(val_indices)} samples ({len(val_pair_set)} pairs)")
+print(f"  Test:  {len(test_indices)} samples ({len(test_pair_set)} pairs)")
+print(f"  Overlap check: {len(train_pair_set & test_pair_set)} leaked pairs (must be 0)")
 
 # %% [markdown]
 # ## 4. Train SRNet
