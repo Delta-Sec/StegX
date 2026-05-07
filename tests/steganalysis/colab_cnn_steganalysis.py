@@ -8,20 +8,28 @@
 #
 # **Instructions:** Runtime → Change runtime type → GPU (T4) → Run All
 
-# %% Install dependencies
-# !pip install -q torch torchvision pillow numpy scikit-learn matplotlib
+# %% Step 0: Install dependencies
+import subprocess, sys
 
-# %%
-import os
-import subprocess
-import sys
+subprocess.check_call([sys.executable, "-m", "pip", "install", "-q",
+    "torch", "torchvision", "pillow", "numpy", "scikit-learn", "matplotlib",
+    "stegx-cli[compression]"])
 
-# !pip install -q stegx-cli[compression]
+print("All dependencies installed!")
+
+# %% Step 1: Verify StegX is working
+result = subprocess.run([sys.executable, "-m", "stegx", "--version"], capture_output=True, text=True)
+print(f"StegX version: {result.stdout.strip()}")
+if result.returncode != 0:
+    print("ERROR: StegX not installed correctly!")
+    print(result.stderr)
+    raise RuntimeError("StegX installation failed")
 
 # %% [markdown]
 # ## 1. Generate Dataset
 
 # %%
+import os
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from pathlib import Path
@@ -37,6 +45,11 @@ IMG_SIZE = (256, 256)
 
 print("Generating cover images...")
 for i in range(NUM_IMAGES):
+    img_path = COVER_DIR / f"img_{i:04d}.png"
+    if img_path.exists():
+        if (i+1) % 100 == 0:
+            print(f"  {i+1}/{NUM_IMAGES} (cached)")
+        continue
     rng = np.random.RandomState(seed=i)
     base = rng.randint(40, 220, size=(*IMG_SIZE, 3), dtype=np.uint8)
     img = Image.fromarray(base, "RGB")
@@ -48,7 +61,7 @@ for i in range(NUM_IMAGES):
     img = img.filter(ImageFilter.GaussianBlur(radius=rng.uniform(0.3, 1.5)))
     noise = rng.randint(-2, 3, size=(*IMG_SIZE, 3), dtype=np.int16)
     arr = np.clip(np.array(img, dtype=np.int16) + noise, 0, 255).astype(np.uint8)
-    Image.fromarray(arr, "RGB").save(str(COVER_DIR / f"img_{i:04d}.png"))
+    Image.fromarray(arr, "RGB").save(str(img_path))
     if (i+1) % 100 == 0:
         print(f"  {i+1}/{NUM_IMAGES}")
 
@@ -57,29 +70,70 @@ print(f"Generated {NUM_IMAGES} cover images")
 # %%
 print("Generating stego images with StegX (adaptive + matrix embedding)...")
 secret = DATASET_DIR / "secret.bin"
-with open(secret, "wb") as f:
-    f.write(os.urandom(256))
+if not secret.exists():
+    with open(secret, "wb") as f:
+        f.write(os.urandom(256))
 
 success = 0
+errors = []
 for i in range(NUM_IMAGES):
     cover = COVER_DIR / f"img_{i:04d}.png"
     stego = STEGO_DIR / f"img_{i:04d}.png"
     if stego.exists():
         success += 1
+        if (i+1) % 100 == 0:
+            print(f"  {i+1}/{NUM_IMAGES} (success: {success})")
         continue
-    result = subprocess.run(
-        [sys.executable, "-m", "stegx", "encode",
-         "-i", str(cover), "-f", str(secret), "-o", str(stego),
-         "--adaptive", "--matrix-embedding", "--password-stdin"],
-        input=b"CnnTestPassword99!",
-        capture_output=True, timeout=120
-    )
-    if result.returncode == 0:
-        success += 1
+    try:
+        result = subprocess.run(
+            [sys.executable, "-m", "stegx", "encode",
+             "-i", str(cover), "-f", str(secret), "-o", str(stego),
+             "--adaptive", "--matrix-embedding", "--password-stdin"],
+            input=b"CnnTestPassword99!",
+            capture_output=True, timeout=120
+        )
+        if result.returncode == 0 and stego.exists():
+            success += 1
+        else:
+            err = result.stderr.decode(errors="replace").strip()
+            if len(errors) < 3:
+                errors.append(f"Image {i}: {err[:200]}")
+    except Exception as e:
+        if len(errors) < 3:
+            errors.append(f"Image {i}: {str(e)[:200]}")
     if (i+1) % 100 == 0:
         print(f"  {i+1}/{NUM_IMAGES} (success: {success})")
 
-print(f"Generated {success} stego images")
+print(f"\nGenerated {success}/{NUM_IMAGES} stego images")
+if errors:
+    print("Sample errors:")
+    for e in errors:
+        print(f"  {e}")
+
+if success < 20:
+    print("\n*** FATAL: Not enough stego images. Trying without --adaptive --matrix-embedding ***")
+    for i in range(NUM_IMAGES):
+        cover = COVER_DIR / f"img_{i:04d}.png"
+        stego = STEGO_DIR / f"img_{i:04d}.png"
+        if stego.exists():
+            continue
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "stegx", "encode",
+                 "-i", str(cover), "-f", str(secret), "-o", str(stego),
+                 "--password-stdin"],
+                input=b"CnnTestPassword99!",
+                capture_output=True, timeout=120
+            )
+            if result.returncode == 0 and stego.exists():
+                success += 1
+        except:
+            pass
+        if (i+1) % 100 == 0:
+            print(f"  Fallback: {i+1}/{NUM_IMAGES} (success: {success})")
+    print(f"Final count: {success} stego images")
+
+assert success >= 20, f"Only {success} stego images generated. Cannot proceed."
 
 # %% [markdown]
 # ## 2. Build SRNet Model
@@ -220,13 +274,11 @@ transform = transforms.Compose([
     transforms.ToTensor(),
 ])
 
-transform_test = transforms.Compose([
-    transforms.CenterCrop(256),
-    transforms.ToTensor(),
-])
-
 dataset = StegoDataset(COVER_DIR, STEGO_DIR, transform=transform)
 n_total = len(dataset)
+print(f"Total samples: {n_total}")
+assert n_total >= 40, f"Need at least 40 samples (20 pairs), got {n_total}"
+
 n_train = int(0.7 * n_total)
 n_val = int(0.15 * n_total)
 n_test = n_total - n_train - n_val
@@ -331,7 +383,7 @@ with torch.no_grad():
         all_labels.extend(labels.cpu().numpy())
         all_probs.extend(probs.cpu().numpy())
 
-from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix, classification_report
+from sklearn.metrics import accuracy_score, roc_auc_score, confusion_matrix
 
 acc = accuracy_score(all_labels, all_preds)
 try:
@@ -350,17 +402,17 @@ print(f"    TN={cm[0][0]:4d}  FP={cm[0][1]:4d}")
 print(f"    FN={cm[1][0]:4d}  TP={cm[1][1]:4d}")
 print()
 if acc < 0.55:
-    print("  VERDICT: UNDETECTED")
+    print("  VERDICT: ✅ UNDETECTED")
     print("  SRNet cannot distinguish StegX images from clean images.")
     print("  Detection accuracy is equivalent to random guessing.")
 elif acc < 0.65:
-    print("  VERDICT: BORDERLINE")
+    print("  VERDICT: ⚠️ BORDERLINE")
     print("  SRNet shows weak detection capability.")
 elif acc < 0.75:
-    print("  VERDICT: PARTIALLY DETECTED")
+    print("  VERDICT: ⚠️ PARTIALLY DETECTED")
     print("  SRNet can partially distinguish stego images.")
 else:
-    print("  VERDICT: DETECTED")
+    print("  VERDICT: ❌ DETECTED")
     print("  SRNet can reliably detect StegX images.")
 print("=" * 60)
 
