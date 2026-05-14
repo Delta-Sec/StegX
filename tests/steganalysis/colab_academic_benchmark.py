@@ -18,52 +18,79 @@ print("Dependencies installed.")
 # %% Step 1 — Download BOSSBase 1.01
 import opendatasets as od
 from pathlib import Path
-import shutil
-
-WORK = Path("/content/benchmark")
-WORK.mkdir(exist_ok=True)
-BOSS_DIR = WORK / "bossbase"
-
-if not BOSS_DIR.exists() or len(list(BOSS_DIR.glob("*.pgm"))) < 100:
-    print("Downloading BOSSBase 1.01 from Kaggle...")
-    od.download("https://www.kaggle.com/datasets/lijiyu/bossbase", data_dir=str(WORK))
-    src = list((WORK).rglob("*.pgm"))
-    if not src:
-        for d in WORK.iterdir():
-            if d.is_dir():
-                src = list(d.rglob("*.pgm"))
-                if src:
-                    break
-    BOSS_DIR.mkdir(exist_ok=True)
-    for f in src[:3000]:
-        shutil.copy2(str(f), str(BOSS_DIR / f.name))
-    print(f"Copied {min(len(src), 3000)} images to {BOSS_DIR}")
-else:
-    print(f"BOSSBase already available: {len(list(BOSS_DIR.glob('*.pgm')))} images")
-
-# %% Step 2 — Convert PGM → PNG (RGB) for tool compatibility
+import shutil, glob
 from PIL import Image
 import numpy as np
 
+WORK = Path("/content/benchmark")
+WORK.mkdir(exist_ok=True)
 PNG_DIR = WORK / "covers_png"
 PNG_DIR.mkdir(exist_ok=True)
 
-NUM_IMAGES = min(2000, len(list(BOSS_DIR.glob("*.pgm"))))
-pgm_files = sorted(BOSS_DIR.glob("*.pgm"))[:NUM_IMAGES]
+existing_pngs = sorted(PNG_DIR.glob("*.png"))
+if len(existing_pngs) >= 100:
+    print(f"Covers already prepared: {len(existing_pngs)} PNG images")
+else:
+    print("Downloading BOSSBase 1.01 from Kaggle...")
+    od.download("https://www.kaggle.com/datasets/lijiyu/bossbase", data_dir=str(WORK))
 
-print(f"Converting {NUM_IMAGES} PGM → RGB PNG...")
-for i, pgm in enumerate(pgm_files):
-    out = PNG_DIR / f"img_{i:04d}.png"
-    if out.exists():
-        continue
-    gray = np.array(Image.open(str(pgm)))
-    rgb = np.stack([gray, gray, gray], axis=-1)
-    Image.fromarray(rgb).save(str(out), "PNG")
-    if (i+1) % 500 == 0:
-        print(f"  {i+1}/{NUM_IMAGES}")
-print(f"Converted {NUM_IMAGES} images.")
+    print("\nExploring downloaded structure:")
+    for p in sorted(WORK.rglob("*"))[:50]:
+        if p.is_file():
+            print(f"  FILE: {p} ({p.stat().st_size} bytes)")
+        elif p.is_dir():
+            print(f"  DIR:  {p}/")
 
-cover_files = sorted(PNG_DIR.glob("*.png"))[:NUM_IMAGES]
+    img_exts = ("*.pgm", "*.png", "*.jpg", "*.jpeg", "*.bmp", "*.tif", "*.tiff")
+    all_images = []
+    for ext in img_exts:
+        found = list(WORK.rglob(ext))
+        if found:
+            print(f"  Found {len(found)} files matching {ext}")
+            all_images.extend(found)
+
+    all_images = [f for f in all_images if PNG_DIR not in f.parents and f.parent != PNG_DIR]
+    all_images = sorted(all_images)[:2000]
+    print(f"\nTotal source images found: {len(all_images)}")
+
+    if not all_images:
+        zips = list(WORK.rglob("*.zip"))
+        if zips:
+            import zipfile
+            for z in zips:
+                print(f"  Extracting {z}...")
+                with zipfile.ZipFile(str(z), "r") as zf:
+                    zf.extractall(str(WORK / "extracted"))
+            for ext in img_exts:
+                all_images.extend(list((WORK / "extracted").rglob(ext)))
+            all_images = sorted(all_images)[:2000]
+            print(f"  After extraction: {len(all_images)} images found")
+
+    print(f"\nConverting {len(all_images)} images → RGB PNG...")
+    for i, src in enumerate(all_images):
+        out = PNG_DIR / f"img_{i:04d}.png"
+        if out.exists():
+            continue
+        try:
+            img = Image.open(str(src))
+            if img.mode == "L":
+                arr = np.array(img)
+                rgb = np.stack([arr, arr, arr], axis=-1)
+                Image.fromarray(rgb).save(str(out), "PNG")
+            elif img.mode == "RGB":
+                img.save(str(out), "PNG")
+            else:
+                img.convert("RGB").save(str(out), "PNG")
+        except Exception as e:
+            print(f"  Error on {src.name}: {e}")
+        if (i+1) % 500 == 0:
+            print(f"  {i+1}/{len(all_images)}")
+
+existing_pngs = sorted(PNG_DIR.glob("*.png"))
+NUM_IMAGES = len(existing_pngs)
+cover_files = existing_pngs[:NUM_IMAGES]
+print(f"Ready: {NUM_IMAGES} cover images in {PNG_DIR}")
+assert NUM_IMAGES >= 50, f"Only {NUM_IMAGES} images — check Kaggle download"
 
 # %% Step 3 — Generate secret payload
 SECRET = WORK / "payload.bin"
