@@ -325,9 +325,9 @@ def make_loaders(cover_dir, stego_dir, batch_size=16):
 
     ds_te = PairedStegoDataset(cover_dir, stego_dir, tf_test)
     pin = torch.cuda.is_available()
-    return (DataLoader(Subset(ds,tr_i), batch_size, shuffle=True, num_workers=2, pin_memory=pin),
-            DataLoader(Subset(ds,va_i), batch_size, num_workers=2, pin_memory=pin),
-            DataLoader(Subset(ds_te,te_i), batch_size, num_workers=2, pin_memory=pin),
+    return (DataLoader(Subset(ds,tr_i), batch_size, shuffle=True, num_workers=0, pin_memory=pin),
+            DataLoader(Subset(ds,va_i), batch_size, num_workers=0, pin_memory=pin),
+            DataLoader(Subset(ds_te,te_i), batch_size, num_workers=0, pin_memory=pin),
             {"train":len(tr_i),"val":len(va_i),"test":len(te_i),
              "pairs":np_pairs,"leak":len(tr_set&te_set)})
 
@@ -353,6 +353,7 @@ for tool_name, stego_dir in tools.items():
 
     train_ld, val_ld, test_ld, info = make_loaders(PNG_DIR, stego_dir)
     print(f"  Split: {info} | Leak: {info['leak']} (must be 0)")
+    print(f"  Starting training ({EPOCHS} epochs)...")
 
     model = SRNet().to(device)
     opt = torch.optim.Adam(model.parameters(), lr=2e-4, weight_decay=1e-5)
@@ -385,8 +386,8 @@ for tool_name, stego_dir in tools.items():
         if va > best_va:
             best_va = va
             torch.save(model.state_dict(), f"/content/srnet_{tool_name.replace(' ','_')}.pth")
-        if (ep+1)%10==0:
-            print(f"  Epoch {ep+1:3d} | TrLoss {tl:.4f} TrAcc {ta:.4f} | VaLoss {vl:.4f} VaAcc {va:.4f}")
+        if (ep+1)%5==0 or ep==0:
+            print(f"  Epoch {ep+1:3d}/{EPOCHS} | TrLoss {tl:.4f} TrAcc {ta:.4f} | VaLoss {vl:.4f} VaAcc {va:.4f}")
 
     model.load_state_dict(torch.load(f"/content/srnet_{tool_name.replace(' ','_')}.pth"))
     model.eval()
