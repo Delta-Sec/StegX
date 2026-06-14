@@ -177,6 +177,7 @@ Install securely via the Snap Store on any supported Linux distribution:
 ```bash
 sudo snap install stegx
 ```
+[![Get it from the Snap Store](https://snapcraft.io/en/dark/install.svg)](https://snapcraft.io/stegx)
 
 ### 🛠️ Build from Source
 If you prefer to run it directly from the source code:
