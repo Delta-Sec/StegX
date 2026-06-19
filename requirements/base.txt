@@ -1,6 +1,6 @@
 
 Pillow>=12.2.0
 
-cryptography>=46.0.7,<47
+cryptography>=46.0.7,<49
 tqdm>=4.60.0
 argon2-cffi>=23.1.0
