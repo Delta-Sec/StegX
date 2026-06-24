@@ -10,5 +10,5 @@ brotli==1.2.0
 zxcvbn==4.4.28
 
 pytest==9.0.3
-pytest-cov==5.0.0
+pytest-cov==7.1.0
 numpy==1.26.4
